@@ -23,7 +23,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       # C 예제를 실제로 컴파일해 기대 출력과 대조하려면 컴파일러가 필요하다.
@@ -34,10 +34,37 @@ jobs:
 
       - run: npm ci
 
-      # 빌드가 곧 검사다 — 데이터·본문·목차·예제·HTML 6단계를 전부 통과해야
-      # dist 가 나온다. 하나라도 실패하면 배포가 멈춘다 (CLAUDE.md 7장).
-      - name: Build (검사 6단계 포함)
-        run: npm run build
+      # 실행기가 실제로 잡히는지 먼저 찍어 둔다.
+      # check:examples 가 예제를 "미검증"으로 넘기면 조용히 지나가므로,
+      # 로그에서 python·zig 유무를 눈으로 확인할 수 있어야 한다.
+      - name: 실행기 확인
+        run: |
+          echo "node  $(node --version)"
+          echo "python3 $(python3 --version 2>&1 || echo 없음)"
+          echo "python  $(python --version 2>&1 || echo 없음)"
+          echo "zig     $(zig version 2>&1 || echo 없음)"
+
+      # 빌드가 곧 검사다 (CLAUDE.md 7장). 한 덩어리로 돌리면 로그를 못 볼 때
+      # 어느 단계가 깨졌는지 알 수 없어서, 단계마다 따로 돌린다.
+      - name: 1. check:data — 성취기준 매핑·커버리지
+        run: npm run check:data
+
+      - name: 2. check:content — 본문 ↔ curriculum.json 이중 확인
+        run: npm run check:content
+
+      - name: 3. check:toc — 목차 강조 판정
+        run: npm run check:toc
+
+      - name: 4. check:examples — 예제 코드 실제 실행
+        run: npm run check:examples
+
+      - name: 5. astro build — 정적 생성
+        run: npx astro build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+
+      - name: 6. check:html — 산출물 전수 검사
+        run: npm run check:html
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
 
