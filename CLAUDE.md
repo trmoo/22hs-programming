@@ -387,6 +387,30 @@ npm run check:todo
 npm run check:all
 ```
 
+### 배포 — GitHub Pages
+
+- 저장소: https://github.com/trmoo/22hs-programming
+- 주소: https://trmoo.github.io/22hs-programming/
+
+`.github/workflows/deploy.yml`이 푸시마다 검사 6단계를 돌리고 통과한 것만 올린다. `dist/`는 커밋하지 않는다.
+
+**하위 경로 배포라 `BASE_PATH`가 필요하다.** 워크플로가 `BASE_PATH=/22hs-programming/`을 준다. 로컬에서 같은 조건으로 확인하려면:
+
+```bash
+BASE_PATH=/22hs-programming/ npm run build
+```
+
+> Git Bash에서는 MSYS가 `/22hs-programming/`을 윈도우 경로(`C:/Program Files/Git/…`)로 바꿔 버려
+> 검사가 엉뚱하게 실패한다. PowerShell을 쓰거나 `MSYS_NO_PATHCONV=1`을 붙인다.
+
+**★ Node 22 이상이 필요하다 (2026-08-07 실제로 겪음).** 워크플로를 Node 20으로 두었더니 빌드가 실패했다. `package.json`의 `engines`도 22로 올려 두었다.
+
+**★ 워크플로는 검사 단계를 하나씩 나눠 돌린다.** `npm run build` 한 덩어리로 두면 어느 검사가 깨졌는지 알 수 없다 — **공개 저장소라도 Actions 로그 열람에는 로그인이 필요해서** 실패 원인을 밖에서 못 본다. 단계 이름만 보고 원인을 좁힐 수 있게 나눠 두었으니 합치지 말 것.
+
+**★ Pages 활성화**는 `configure-pages@v5`의 `enablement: true`로 자동으로 켜졌다. 거부되는 저장소도 있으니(`Resource not accessible by integration`) 그때는 Settings → Pages → Source를 **「GitHub Actions」**로 한 번만 바꾼다. **「Deploy from a branch」를 고르면 안 된다** — `dist/`를 커밋하지 않으므로 흰 화면이 뜬다.
+
+---
+
 ### 작업 위치 — 로컬 디스크에 둔다
 
 프로젝트 경로는 `D:\project_AI\22hs-programming` 이다. **OneDrive 안에서 작업하지 않는다.**
