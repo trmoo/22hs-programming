@@ -39,9 +39,24 @@ const 라벨 = lang === 'python' ? 'Python' : 'C';
    전산실 컴파일러에서 돌려 보게 한다. Python은 Pyodide로 직접 실행한다. */
 const 브라우저실행 = lang === 'python';
 const 코드 = (await Astro.slots.render('default')).trim();
+
+/* 강조된 코드에서 태그를 걷어 낸 원문. 실행기와 편집 칸이 이것을 쓴다.
+   Shiki 가 감싼 <span> 을 지우고 &lt; 같은 실체 참조를 되돌린다. */
+const 코드원문 = 코드
+  .replace(/<[^>]+>/g, '')
+  .replace(/&lt;/g, '<')
+  .replace(/&gt;/g, '>')
+  .replace(/&quot;/g, '"')
+  .replace(/&#39;/g, "'")
+  .replace(/&amp;/g, '&');
+const 코드줄수 = Math.min(24, Math.max(3, 코드원문.split('\n').length));
+
+/* 일부러 실패하는 예제(norun)는 실행 단추를 두지 않는다.
+   트레이스백을 보여 주려고 실은 예제라 실행 결과가 이미 본문에 적혀 있다. */
+const 실행가능 = 브라우저실행 && !norun;
 ---
 
-<div class="code-sample" data-lang-block={lang}>
+<div class="code-sample" data-lang-block={lang} data-expect={실행가능 ? expect : undefined}>
   <div class="code-sample__head">
     <span class="code-sample__lang">{라벨}</span>
     {caption && <span class="code-sample__caption">{caption}</span>}
@@ -50,6 +65,21 @@ const 코드 = (await Astro.slots.render('default')).trim();
         <span class="code-sample__hint" title="C 예제는 브라우저에서 실행하지 않는다. 아래 실행 결과는 컴파일해 확인한 값이다.">
           확인된 출력
         </span>
+      )
+    }
+    {
+      실행가능 && (
+        <>
+          <button class="code-sample__run-btn" type="button" data-run-code>
+            ▶ 실행
+          </button>
+          <button class="code-sample__stop-btn" type="button" data-stop-code hidden>
+            ■ 중단
+          </button>
+          <button class="code-sample__edit-btn" type="button" data-edit-toggle aria-pressed="false">
+            고치기
+          </button>
+        </>
       )
     }
     {
@@ -66,16 +96,30 @@ const 코드 = (await Astro.slots.render('default')).trim();
   <pre class="code-sample__code" class:list={{ 'code-sample__code--nocopy': nocopy }}><code set:html={코드} /></pre>
 
   {
+    실행가능 && (
+      <textarea class="code-sample__edit" data-code-edit rows={코드줄수} spellcheck="false" hidden>
+        {코드원문}
+      </textarea>
+    )
+  }
+
+  {
     stdin !== undefined && (
       <div class="code-sample__io">
         <span class="code-sample__io-label">입력</span>
-        <pre class="code-sample__io-body">{stdin}</pre>
+        {실행가능 ? (
+          <textarea class="code-sample__io-edit" data-stdin-edit rows={Math.max(1, stdin.split('\n').filter(Boolean).length)} spellcheck="false">{stdin}</textarea>
+        ) : (
+          <pre class="code-sample__io-body">{stdin}</pre>
+        )}
       </div>
     )
   }
 
   <div class="code-sample__io">
-    <span class="code-sample__io-label">실행 결과</span>
+    <span class="code-sample__io-label">
+      {브라우저실행 ? '확인된 실행 결과' : '실행 결과'}
+    </span>
     {
       expect === '' ? (
         <pre class="code-sample__io-body code-sample__io-body--empty">(화면에 출력되는 내용 없음)</pre>
@@ -84,6 +128,19 @@ const 코드 = (await Astro.slots.render('default')).trim();
       )
     }
   </div>
+
+  {
+    실행가능 && (
+      <div class="code-sample__run" data-run-panel hidden>
+        <div class="code-sample__run-head">
+          <span class="code-sample__io-label">내가 실행한 결과</span>
+          <span class="code-sample__status" data-run-status />
+        </div>
+        <pre class="code-sample__out" data-run-out />
+        <p class="code-sample__cmp" data-run-cmp hidden />
+      </div>
+    )
+  }
 
   {
     norun && (
@@ -254,9 +311,265 @@ const 코드 = (await Astro.slots.render('default')).trim();
     user-select: none;
     -webkit-user-select: none;
   }
+
+  /* ---------- 실행기 (Phase 4) ---------- */
+  .code-sample__run-btn,
+  .code-sample__edit-btn {
+    flex: none;
+    font-size: 0.76rem;
+    font-weight: 700;
+    padding: 3px 11px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--c-code-border);
+    background: var(--c-surface);
+    color: var(--c-text);
+    cursor: pointer;
+  }
+  .code-sample__run-btn {
+    margin-left: auto;
+    color: var(--c-primary);
+    border-color: currentColor;
+  }
+  .code-sample__run-btn:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+  .code-sample__stop-btn {
+    flex: none;
+    font-size: 0.76rem;
+    font-weight: 700;
+    padding: 3px 11px;
+    border-radius: var(--radius-pill);
+    border: 1px solid currentColor;
+    background: var(--c-surface);
+    color: var(--warn);
+    cursor: pointer;
+  }
+  .code-sample__run-btn:hover:not(:disabled),
+  .code-sample__edit-btn:hover {
+    background: var(--c-primary-soft);
+  }
+  .code-sample__edit-btn[aria-pressed='true'] {
+    background: var(--c-primary-soft);
+    border-color: var(--c-primary);
+  }
+
+  .code-sample__edit,
+  .code-sample__io-edit {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--space-4);
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
+    line-height: 1.6;
+    tab-size: 4;
+    color: var(--c-text);
+    background: var(--c-bg);
+    border: 0;
+    border-top: 1px solid var(--c-code-border);
+    resize: vertical;
+  }
+  .code-sample__io-edit {
+    font-size: 0.84rem;
+    padding: var(--space-2) var(--space-4);
+  }
+  .code-sample__edit:focus-visible,
+  .code-sample__io-edit:focus-visible {
+    outline: 2px solid var(--c-primary);
+    outline-offset: -2px;
+  }
+
+  .code-sample__run {
+    border-top: 1px solid var(--c-code-border);
+    background: var(--c-bg);
+  }
+  .code-sample__run-head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4) 0;
+  }
+  .code-sample__status {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--c-text-faint);
+  }
+  .code-sample__out {
+    margin: 0;
+    padding: var(--space-2) var(--space-4) var(--space-3);
+    font-family: var(--font-mono);
+    font-size: 0.86rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 20em;
+    overflow: auto;
+  }
+  .code-sample__out .is-err,
+  .code-sample__out.is-err {
+    color: var(--warn);
+  }
+  .code-sample__cmp {
+    margin: 0;
+    padding: 0 var(--space-4) var(--space-3);
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+  .code-sample__cmp.is-same {
+    color: var(--c-accent);
+  }
+  .code-sample__cmp.is-diff {
+    color: var(--warn);
+  }
+
+  /* 실행 관련 요소는 종이에 나오지 않는다 */
+  @media print {
+    .code-sample__run-btn,
+    .code-sample__edit-btn,
+    .code-sample__run {
+      display: none;
+    }
+  }
 </style>
 
 <script>
+  import { 실행, 실행중인가, 주소설정, 중단, 실행제한밀리초 } from '@lib/pyrun';
+
+  /* 워커 파일은 public/ 에 있으므로 base 경로를 붙여야 한다.
+     import.meta.env.BASE_URL 은 astro.config.mjs 의 base 를 그대로 준다. */
+  const BASE = import.meta.env.BASE_URL;
+  주소설정((BASE.endsWith('/') ? BASE : BASE + '/') + 'runner/py-worker.js');
+
+  /** 편집 중이면 그 내용을, 아니면 표시된 코드를 쓴다 */
+  function 지금코드(box: HTMLElement): string {
+    const ta = box.querySelector<HTMLTextAreaElement>('[data-code-edit]');
+    if (ta && !ta.hidden) return ta.value;
+    return box.querySelector('code')?.textContent ?? '';
+  }
+
+  function 지금입력(box: HTMLElement): string {
+    const ta = box.querySelector<HTMLTextAreaElement>('[data-stdin-edit]');
+    if (ta) return ta.value.endsWith('\n') ? ta.value : ta.value + '\n';
+    return '';
+  }
+
+  /* --- 고치기 토글 --- */
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-edit-toggle]')) {
+    btn.addEventListener('click', () => {
+      const box = btn.closest<HTMLElement>('.code-sample');
+      if (!box) return;
+      const pre = box.querySelector<HTMLElement>('.code-sample__code');
+      const ta = box.querySelector<HTMLTextAreaElement>('[data-code-edit]');
+      if (!pre || !ta) return;
+
+      const 여는중 = ta.hidden;
+      if (여는중) {
+        /* 강조된 코드를 그대로 옮겨 담아, 보던 것과 고치는 것이 같게 한다 */
+        ta.value = pre.querySelector('code')?.textContent ?? ta.value;
+      }
+      ta.hidden = !여는중;
+      pre.hidden = 여는중;
+      btn.setAttribute('aria-pressed', String(여는중));
+      btn.textContent = 여는중 ? '되돌리기' : '고치기';
+      if (여는중) ta.focus();
+    });
+  }
+
+  /* --- 실행 --- */
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-run-code]')) {
+    btn.addEventListener('click', async () => {
+      const box = btn.closest<HTMLElement>('.code-sample');
+      if (!box) return;
+      const panel = box.querySelector<HTMLElement>('[data-run-panel]');
+      const out = box.querySelector<HTMLElement>('[data-run-out]');
+      const status = box.querySelector<HTMLElement>('[data-run-status]');
+      const cmp = box.querySelector<HTMLElement>('[data-run-cmp]');
+      if (!panel || !out || !status || !cmp) return;
+
+      if (실행중인가()) {
+        status.textContent = '다른 예제가 실행 중이다. 끝나면 다시 눌러 보자.';
+        panel.hidden = false;
+        return;
+      }
+
+      const stop = box.querySelector<HTMLButtonElement>('[data-stop-code]');
+      panel.hidden = false;
+      cmp.hidden = true;
+      out.textContent = '';
+      out.classList.remove('is-err');
+      btn.disabled = true;
+      if (stop) stop.hidden = false;
+      const 원래글 = btn.textContent;
+      btn.textContent = '실행 중…';
+      status.textContent = '엔진을 준비하는 중이다. 처음 한 번만 시간이 걸린다.';
+
+      let 첫출력 = true;
+      const r = await 실행(지금코드(box), 지금입력(box), (갈래, 글) => {
+        if (첫출력) {
+          status.textContent = '실행 중…';
+          첫출력 = false;
+        }
+        const span = document.createElement('span');
+        if (갈래 === 'err') span.className = 'is-err';
+        span.textContent = 글;
+        out.appendChild(span);
+      });
+
+      btn.disabled = false;
+      btn.textContent = 원래글;
+      if (stop) stop.hidden = true;
+
+      if (r.실패) {
+        status.textContent = '';
+        out.textContent =
+          `실행기를 쓸 수 없다.\n${r.실패}\n\n` +
+          '학교망에서 외부 주소가 막혔을 때 자주 생긴다.\n' +
+          '[코드 복사] 로 가져가 전산실 파이썬에서 돌려 보자.\n' +
+          '본문을 읽고 문제를 푸는 데에는 지장이 없다.';
+        out.classList.add('is-err');
+        return;
+      }
+
+      if (r.끊김) {
+        status.textContent = '';
+        out.textContent += r.멈춤
+          ? '\n[중단했다.]'
+          : `\n[${실행제한밀리초 / 1000}초가 넘어 중단했다.]\n` +
+            '끝나지 않는 반복이 있는지 확인해 보자 — 무엇이 변해서 반복이 끝나는가?';
+        out.classList.add('is-err');
+        return;
+      }
+
+      status.textContent = `${r.걸린밀리초}ms`;
+
+      /* 기대 출력과 대조해 준다. 스스로 눈으로 비교하는 수고를 덜되,
+         무엇이 기대값인지는 위 칸에 그대로 남겨 둔다. */
+      const 기대 = box.getAttribute('data-expect');
+      if (기대 !== null && !r.오류) {
+        const 실제 = r.출력
+          .filter((o) => o.갈래 === 'out')
+          .map((o) => o.글)
+          .join('');
+        const 같다 = 실제 === 기대;
+        cmp.hidden = false;
+        cmp.textContent = 같다
+          ? '기대한 출력과 같다.'
+          : '기대한 출력과 다르다. 코드를 고쳤다면 그래서 달라진 것이다.';
+        cmp.className = 같다 ? 'code-sample__cmp is-same' : 'code-sample__cmp is-diff';
+      }
+    });
+  }
+
+  /* --- 중단 --- */
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-stop-code]')) {
+    btn.addEventListener('click', () => {
+      중단();
+      btn.hidden = true;
+    });
+  }
+
   for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-copy-code]')) {
     btn.addEventListener('click', async () => {
       const code = btn.closest('.code-sample')?.querySelector('code')?.textContent ?? '';
