@@ -1,0 +1,43 @@
+---
+/**
+ * 개념 확인 문제 — 정답·해설 토글
+ *
+ * 문항은 <QuizItem>으로 넣는다. 채점은 클릭 즉시 이뤄지고 해설이 펼쳐진다.
+ * 점수를 저장하지 않는다 (CLAUDE.md 6장 8번).
+ *
+ * MDX 사용법
+ *   <CheckQuiz>
+ *     <QuizItem stem="…" choices={['가','나','다']} answer={1} explain="…" />
+ *   </CheckQuiz>
+ */
+interface Props {
+  title?: string;
+}
+const { title = '개념 확인 문제' } = Astro.props;
+---
+
+<section class="quiz" aria-labelledby="quiz-heading">
+  <h3 id="quiz-heading" class="quiz__title">{title}</h3>
+  <p class="quiz__hint">보기를 누르면 바로 채점된다. 틀려도 해설을 읽으면 된다.</p>
+  <slot />
+</section>
+
+<style>
+  .quiz {
+    margin: var(--space-6) 0;
+    padding: var(--space-5);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+  }
+  .quiz__title {
+    margin: 0;
+    font-size: 1.06rem;
+  }
+  .quiz__hint {
+    margin: var(--space-1) 0 var(--space-4);
+    font-size: 0.84rem;
+    color: var(--c-text-faint);
+  }
+</style>

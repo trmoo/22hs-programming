@@ -1,0 +1,186 @@
+---
+/**
+ * 확인 문제 한 문항
+ *
+ * answer 는 0부터 시작하는 정답 보기 번호다.
+ * OX 문항은 choices={['⭕ 그렇다', '❌ 아니다']} 로 쓴다.
+ *
+ * 데이터의 출처는 항상 자체 출제다 (CLAUDE.md 3-2). 교과서 문항을 옮기지 않는다.
+ */
+interface Props {
+  stem: string;
+  choices: string[];
+  answer: number;
+  explain: string;
+  /** 이 문항이 확인하는 성취기준 코드 */
+  std?: string;
+}
+const { stem, choices, answer, explain, std } = Astro.props;
+
+if (answer < 0 || answer >= choices.length) {
+  throw new Error(`QuizItem: answer(${answer})가 보기 범위를 벗어났다 — "${stem}"`);
+}
+---
+
+<div class="qitem" data-quiz-item>
+  <p class="qitem__stem">
+    {stem}
+    {std && <span class="qitem__std">{std}</span>}
+  </p>
+
+  <ol class="qitem__choices">
+    {
+      choices.map((c, i) => (
+        <li>
+          <button
+            type="button"
+            class="qitem__choice"
+            data-choice
+            data-correct={i === answer ? 'true' : undefined}
+          >
+            <span class="qitem__no">{i + 1}</span>
+            <span set:html={c} />
+          </button>
+        </li>
+      ))
+    }
+  </ol>
+
+  <div class="qitem__feedback" data-feedback hidden>
+    <strong class="qitem__verdict" data-verdict></strong>
+    <span set:html={explain} />
+  </div>
+</div>
+
+<style>
+  .qitem {
+    padding: var(--space-4) 0;
+    border-top: 1px solid var(--c-border);
+  }
+  .qitem:first-of-type {
+    border-top: none;
+    padding-top: 0;
+  }
+  .qitem__stem {
+    margin: 0 0 var(--space-3);
+    font-weight: 600;
+  }
+  .qitem__std {
+    display: inline-block;
+    margin-left: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--c-text-faint);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-radius: 5px;
+    padding: 1px 6px;
+    vertical-align: middle;
+  }
+  .qitem__choices {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-2);
+  }
+  .qitem__choice {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    color: var(--c-text);
+    background: var(--c-surface-2);
+    border: 1.5px solid var(--c-border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    cursor: pointer;
+  }
+  .qitem__choice:hover:not(:disabled) {
+    border-color: var(--c-primary);
+    background: var(--c-primary-soft);
+  }
+  .qitem__choice:disabled {
+    cursor: default;
+  }
+  .qitem__no {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--c-text-faint);
+  }
+  .qitem__choice[data-state='right'] {
+    border-color: var(--ok);
+    background: var(--ok-soft);
+  }
+  .qitem__choice[data-state='wrong'] {
+    border-color: var(--bad);
+    background: var(--bad-soft);
+  }
+  .qitem__choice[data-state='reveal'] {
+    border-color: var(--ok);
+    border-style: dashed;
+  }
+  .qitem__feedback {
+    margin-top: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-sm);
+    background: var(--c-surface-2);
+    border-left: 4px solid var(--c-border-strong);
+    font-size: 0.92rem;
+  }
+  .qitem__feedback[data-ok='true'] {
+    border-left-color: var(--ok);
+    background: var(--ok-soft);
+  }
+  .qitem__feedback[data-ok='false'] {
+    border-left-color: var(--warn);
+    background: var(--warn-soft);
+  }
+  .qitem__verdict {
+    display: block;
+    margin-bottom: var(--space-1);
+  }
+
+  @media print {
+    /* 종이에서는 보기만 남기고 해설은 접어 둔 채로 인쇄한다 */
+    .qitem__feedback {
+      display: none !important;
+    }
+    .qitem__choice {
+      background: #fff;
+    }
+  }
+</style>
+
+<script>
+  for (const item of document.querySelectorAll<HTMLElement>('[data-quiz-item]')) {
+    const choices = Array.from(item.querySelectorAll<HTMLButtonElement>('[data-choice]'));
+    const fb = item.querySelector<HTMLElement>('[data-feedback]');
+    const verdict = item.querySelector<HTMLElement>('[data-verdict]');
+
+    for (const btn of choices) {
+      btn.addEventListener('click', () => {
+        if (item.dataset.done === 'true') return;
+        item.dataset.done = 'true';
+
+        const 정답 = btn.dataset.correct === 'true';
+        for (const b of choices) {
+          b.disabled = true;
+          if (b.dataset.correct === 'true' && !정답) b.dataset.state = 'reveal';
+        }
+        btn.dataset.state = 정답 ? 'right' : 'wrong';
+
+        if (fb && verdict) {
+          verdict.textContent = 정답 ? '정답이다.' : '다시 생각해 보자.';
+          fb.dataset.ok = String(정답);
+          fb.hidden = false;
+        }
+      });
+    }
+  }
+</script>

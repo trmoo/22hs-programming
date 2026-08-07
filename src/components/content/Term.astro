@@ -1,0 +1,107 @@
+---
+/**
+ * 전문용어 — 첫 등장 시 원어 병기 (CLAUDE.md 4-2)
+ *
+ * MDX 사용법
+ *   <Term ko="컴파일러" en="compiler" desc="소스 코드를 기계어로 번역하는 프로그램" />
+ *
+ * en 을 주면 "컴파일러(compiler)" 로 렌더링된다. 같은 문서의 두 번째 등장부터는
+ * en 을 생략하고 한국어만 쓴다.
+ */
+interface Props {
+  ko: string;
+  en?: string;
+  desc?: string;
+}
+const { ko, en, desc } = Astro.props;
+---
+
+{
+  desc ? (
+    <span class="term" tabindex="0" data-term data-desc={desc}>
+      {ko}
+      {en && <span class="term__en">({en})</span>}
+      <span class="sr-only"> — {desc}</span>
+    </span>
+  ) : (
+    <span class="term term--plain">
+      {ko}
+      {en && <span class="term__en">({en})</span>}
+    </span>
+  )
+}
+
+<style>
+  .term {
+    position: relative;
+    font-weight: 600;
+    border-bottom: 2px dotted var(--c-primary);
+    cursor: help;
+  }
+  .term--plain {
+    border-bottom: none;
+    cursor: auto;
+  }
+  .term__en {
+    font-weight: 400;
+    color: var(--c-text-soft);
+    font-size: 0.92em;
+  }
+
+  @media print {
+    .term {
+      border-bottom: none;
+    }
+  }
+</style>
+
+<script>
+  /* 용어 설명 말풍선. hover 와 focus 모두에서 열려야 키보드 사용자도 읽을 수 있다. */
+  let pop: HTMLElement | null = null;
+
+  const 닫기 = () => {
+    pop?.remove();
+    pop = null;
+  };
+
+  const 열기 = (el: HTMLElement) => {
+    닫기();
+    pop = document.createElement('div');
+    pop.className = 'term-pop';
+    pop.setAttribute('role', 'tooltip');
+    pop.textContent = el.dataset.desc ?? '';
+    document.body.appendChild(pop);
+
+    const r = el.getBoundingClientRect();
+    const 폭 = Math.min(320, window.innerWidth - 24);
+    pop.style.width = `${폭}px`;
+    pop.style.top = `${r.bottom + window.scrollY + 8}px`;
+    pop.style.left = `${Math.max(12, Math.min(r.left + window.scrollX, window.scrollX + window.innerWidth - 폭 - 12))}px`;
+  };
+
+  for (const el of document.querySelectorAll<HTMLElement>('[data-term]')) {
+    el.addEventListener('mouseenter', () => 열기(el));
+    el.addEventListener('mouseleave', 닫기);
+    el.addEventListener('focus', () => 열기(el));
+    el.addEventListener('blur', 닫기);
+  }
+  window.addEventListener('scroll', 닫기, { passive: true });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') 닫기();
+  });
+</script>
+
+<style is:global>
+  .term-pop {
+    position: absolute;
+    z-index: 400;
+    background: var(--c-code-bg);
+    color: var(--c-code-text);
+    font-size: 0.84rem;
+    line-height: 1.6;
+    padding: 10px 13px;
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    pointer-events: none;
+  }
+</style>

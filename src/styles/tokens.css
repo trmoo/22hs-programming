@@ -1,0 +1,93 @@
+/* ============================================================
+   디자인 토큰 — 고등학교 「프로그래밍」 웹 교과서
+
+   색·간격·타이포를 여기서만 정의한다. 컴포넌트는 var()만 쓴다.
+   언어 모드(Python / C)는 html[data-lang]으로 강조색을 갈아 끼운다.
+   ============================================================ */
+
+:root {
+  /* ---------- 타이포 ---------- */
+  --font-sans: Pretendard, 'Pretendard Variable', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  --font-mono: 'JetBrains Mono', D2Coding, 'Cascadia Mono', Consolas, 'Courier New', monospace;
+
+  --fs-base: 17px;
+  --lh-base: 1.75;
+
+  /* ---------- 중립색 (slate 계열) ---------- */
+  --c-bg: #f5f7fa;
+  --c-surface: #ffffff;
+  --c-surface-2: #f8fafc;
+  --c-text: #1c2536;
+  --c-text-soft: #4d5b73;
+  --c-text-faint: #8492a8;
+  --c-border: #e2e8f0;
+  --c-border-strong: #cbd5e1;
+
+  /* ---------- 강조색: 기본 (언어 미선택 · 포털) ---------- */
+  --c-primary: #2b59c3;
+  --c-primary-deep: #1e429f;
+  --c-primary-soft: #e8eefc;
+  --c-accent: #0d9488;
+  --c-accent-soft: #d6f5f1;
+
+  /* ---------- 상태색 ---------- */
+  --ok: #15803d;
+  --ok-soft: #e7f6ec;
+  --warn: #b45309;
+  --warn-soft: #fdf2e2;
+  --bad: #b91c1c;
+  --bad-soft: #fdeceb;
+
+  /* ---------- 코드 패널 (다크) ---------- */
+  --c-code-bg: #101a2e;
+  --c-code-bg-2: #0a1120;
+  --c-code-text: #dce4f0;
+  --c-code-border: #22304d;
+
+  /* ---------- 모양 ---------- */
+  --radius: 14px;
+  --radius-sm: 9px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgb(16 26 46 / 6%), 0 2px 8px rgb(16 26 46 / 5%);
+  --shadow-md: 0 4px 12px rgb(16 26 46 / 8%), 0 12px 32px rgb(16 26 46 / 7%);
+
+  /* ---------- 레이아웃 ---------- */
+  --w-tree: 272px;   /* 좌측 단원 트리 */
+  --w-toc: 232px;    /* 우측 목차 */
+  --w-article: 760px; /* 본문 최대 폭 — 한글 가독성 기준 */
+  --h-topbar: 56px;
+  --gap-col: 28px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 72px;
+
+  --z-topbar: 100;
+  --z-drawer: 200;
+  --z-progress: 300;
+}
+
+/* ---------- 언어 모드별 강조색 ----------
+   Python = 청록, C = 남보라. 코드 블록과 언어 토글, 실행 패널 테두리에 반영된다. */
+html[data-lang='python'] {
+  --c-primary: #0f766e;
+  --c-primary-deep: #115e59;
+  --c-primary-soft: #d6f5f1;
+  --c-accent: #2b59c3;
+  --c-accent-soft: #e8eefc;
+}
+
+html[data-lang='c'] {
+  --c-primary: #4f46e5;
+  --c-primary-deep: #4338ca;
+  --c-primary-soft: #e9e8fd;
+  --c-accent: #0891b2;
+  --c-accent-soft: #ddf3f9;
+}

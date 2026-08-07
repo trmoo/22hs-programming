@@ -1,0 +1,84 @@
+---
+/**
+ * 그림 — 출처·라이선스 표기가 필수다 (CLAUDE.md 3-2)
+ *
+ * 자체 제작 도식은 src 대신 slot 으로 SVG를 직접 넣는다.
+ *   <Figure caption="컴파일 과정" self>{svg}</Figure>
+ * 사진은 CC 라이선스 이미지만 쓰고 출처를 반드시 적는다.
+ *   <Figure src="/img/x.jpg" alt="…" caption="…" source="촬영자, Wikimedia Commons (CC BY-SA 4.0)" />
+ */
+interface Props {
+  caption: string;
+  src?: string;
+  alt?: string;
+  /** 외부 이미지의 출처와 라이선스. 자체 제작이면 self 를 쓴다. */
+  source?: string;
+  /** 자체 제작 도식임을 표시 */
+  self?: boolean;
+  width?: number;
+  height?: number;
+}
+const { caption, src, alt, source, self = false, width, height } = Astro.props;
+
+if (src && !alt) {
+  throw new Error(`Figure: 이미지에는 alt 가 반드시 필요하다 — "${caption}"`);
+}
+if (src && !source && !self) {
+  throw new Error(
+    `Figure: 외부 이미지에는 출처와 라이선스를 적어야 한다 (source) — "${caption}"`
+  );
+}
+---
+
+<figure class="fig">
+  {
+    src ? (
+      <img src={src} alt={alt} width={width} height={height} loading="lazy" decoding="async" />
+    ) : (
+      <div class="fig__slot">
+        <slot />
+      </div>
+    )
+  }
+  <figcaption>
+    {caption}
+    <span class="fig__src">{self ? '자체 제작' : source}</span>
+  </figcaption>
+</figure>
+
+<style>
+  .fig {
+    margin: var(--space-5) 0;
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .fig img {
+    width: 100%;
+    height: auto;
+  }
+  .fig__slot {
+    padding: var(--space-4);
+    overflow-x: auto;
+  }
+  .fig__slot :global(svg) {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+  }
+  figcaption {
+    padding: 10px var(--space-4);
+    border-top: 1px solid var(--c-border);
+    font-size: 0.86rem;
+    color: var(--c-text-soft);
+    background: var(--c-surface-2);
+  }
+  .fig__src {
+    display: block;
+    margin-top: 3px;
+    font-size: 0.76rem;
+    color: var(--c-text-faint);
+  }
+</style>

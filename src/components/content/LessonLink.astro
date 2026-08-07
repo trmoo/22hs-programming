@@ -1,0 +1,53 @@
+---
+/**
+ * 다른 차시로 가는 본문 링크
+ *
+ * MDX 에서 절대 경로를 직접 적으면 base 가 바뀔 때(예: /hs-prog/ 하위 배포)
+ * 전부 깨진다. 그래서 본문에서도 href()를 거치게 하려고 만든 컴포넌트다.
+ * 차시명은 curriculum.json 에서 가져오므로 제목을 두 곳에 적지 않는다.
+ *
+ * MDX 사용법
+ *   <LessonLink unit={1} lesson={3} />           → "3차시 용도에 맞는 언어 고르기"
+ *   <LessonLink unit={1} lesson={3} 번호만 />     → "3차시"
+ */
+import { 단원목록, slug } from '@lib/curriculum';
+import { href } from '@lib/url';
+
+interface Props {
+  unit: number;
+  lesson: number;
+  /** 차시명을 빼고 "N차시"만 보인다 */
+  번호만?: boolean;
+}
+const { unit, lesson, 번호만 = false } = Astro.props;
+
+const 단원 = 단원목록.find((u) => u.단원번호 === unit);
+const 차시 = 단원?.차시.find((l) => l.차시번호 === lesson);
+
+/* 없는 차시를 가리키면 조용히 링크만 깨지는 것보다 빌드가 서는 편이 낫다. */
+if (!단원 || !차시) {
+  throw new Error(
+    `LessonLink: curriculum.json 에 ${unit}단원 ${lesson}차시가 없다`
+  );
+}
+
+const 경로 = href(`/units/${slug(unit)}/${slug(lesson)}/`);
+---
+
+<a class="lesson-link" href={경로}>
+  <span class="lesson-link__no">{차시.차시번호}차시</span>{
+    !번호만 && <span class="lesson-link__title"> {차시.차시명}</span>
+  }
+</a>
+
+<style>
+  .lesson-link {
+    font-weight: 600;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+  .lesson-link__no {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+  }
+</style>

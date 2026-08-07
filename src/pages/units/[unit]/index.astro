@@ -1,0 +1,232 @@
+---
+import BaseLayout from '@layouts/BaseLayout.astro';
+import StandardBadge from '@components/StandardBadge.astro';
+import { 단원목록, slug, 출판사목록, 출판사이름 } from '@lib/curriculum';
+import { href } from '@lib/url';
+
+export function getStaticPaths() {
+  return 단원목록.map((u) => ({
+    params: { unit: slug(u.단원번호) },
+    props: { 단원: u },
+  }));
+}
+
+const { 단원 } = Astro.props;
+const 차시들 = [...단원.차시].sort((a, b) => a.차시번호 - b.차시번호);
+
+const 목차 = [
+  ...(단원.핵심아이디어?.length ? [{ id: 'ideas', text: '핵심 아이디어', depth: 2 as const }] : []),
+  { id: 'standards', text: '이 단원의 성취기준', depth: 2 as const },
+  { id: 'roadmap', text: '학습 로드맵', depth: 2 as const },
+  { id: 'crosswalk', text: '교과서 대조', depth: 2 as const },
+];
+
+/* 이 단원의 성취기준에 매핑이 있는 출판사만 표에 세운다 */
+const 매핑있는출판사 = 출판사목록.filter((p) =>
+  단원.성취기준.some((s) => s.출판사별매핑?.[p.코드])
+);
+---
+
+<BaseLayout
+  제목={`${단원.단원번호}단원 ${단원.단원명}`}
+  설명={단원.단원개요 ?? undefined}
+  크럼목록={[{ 라벨: '과목 홈', 경로: '/' }, { 라벨: `${단원.단원번호}단원 ${단원.단원명}` }]}
+  목차={목차}
+  목차제목="단원 열기"
+>
+  <div class="hero">
+    <span class="hero__eyebrow">{단원.단원번호}단원 · {단원.영역}</span>
+    <h1>{단원.단원명}</h1>
+    {단원.단원개요 && <p class="hero__lead">{단원.단원개요}</p>}
+    <div class="hero__meta">
+      <span class="chip">성취기준 {단원.성취기준.length}개</span>
+      <span class="chip">{차시들.length}차시</span>
+      {
+        매핑있는출판사.map((p) => {
+          const m = 단원.성취기준.find((s) => s.출판사별매핑?.[p.코드])?.출판사별매핑?.[p.코드];
+          return (
+            <span class="pub-label chip" data-pub={p.코드}>
+              {p.표시명} <span class="pub-label__quote">«{m?.단원명}»</span>
+            </span>
+          );
+        })
+      }
+    </div>
+  </div>
+
+  <div class="article">
+    {
+      단원.핵심아이디어 && 단원.핵심아이디어.length > 0 && (
+        <>
+          <h2 id="ideas">
+            핵심 아이디어<a class="heading-anchor" href="#ideas" aria-hidden="true">#</a>
+          </h2>
+          <ul>
+            {단원.핵심아이디어.map((i) => (
+              <li>{i}</li>
+            ))}
+          </ul>
+        </>
+      )
+    }
+
+    <h2 id="standards">
+      이 단원의 성취기준<a class="heading-anchor" href="#standards" aria-hidden="true">#</a>
+    </h2>
+    <p>단원을 마치면 다음을 할 수 있다.</p>
+
+    <ul class="card-list">
+      {
+        단원.성취기준.map((s) => (
+          <li class="card std-row">
+            <div class="std-row__head">
+              <StandardBadge 코드={s.코드} />
+              {s.출처 && (
+                <span class="std-row__src">
+                  근거: {s.출처.문서}
+                  {s.출처.구간 ? ` (${s.출처.구간})` : ''}
+                </span>
+              )}
+            </div>
+            <p class="std-row__text">{s.본문}</p>
+            {s.고려사항 && <p class="std-row__note">※ {s.고려사항}</p>}
+          </li>
+        ))
+      }
+    </ul>
+
+    <h2 id="roadmap">
+      학습 로드맵<a class="heading-anchor" href="#roadmap" aria-hidden="true">#</a>
+    </h2>
+
+    <ul class="card-list">
+      {
+        차시들.map((l) => (
+          <li>
+            <a
+              class="link-card"
+              href={href(`/units/${slug(단원.단원번호)}/${slug(l.차시번호)}/`)}
+            >
+              <span class="link-card__no">{l.차시번호}차시</span>
+              <span class="link-card__body">
+                <h3>{l.차시명}</h3>
+                <p>
+                  {l.핵심개념.slice(0, 4).join(' · ')}
+                  {l.핵심개념.length > 4 ? ' …' : ''}
+                </p>
+              </span>
+              <span class="link-card__arrow" aria-hidden="true">→</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+
+    <h2 id="crosswalk">
+      교과서 대조<a class="heading-anchor" href="#crosswalk" aria-hidden="true">#</a>
+    </h2>
+    <p>
+      학교에서 쓰는 교과서의 어느 단원이 이 단원에 해당하는지 보여 준다. 우리 목차는
+      성취기준에서 나왔고, 교과서 단원명은 <strong>참고용 병기</strong>다.
+    </p>
+
+    <div class="table-wrap">
+      <table class="tb">
+        <thead>
+          <tr>
+            <th scope="col">성취기준</th>
+            {
+              매핑있는출판사.map((p) => (
+                <th scope="col" data-pub-col={p.코드}>
+                  {p.표시명}
+                </th>
+              ))
+            }
+          </tr>
+        </thead>
+        <tbody>
+          {
+            단원.성취기준.map((s) => (
+              <tr>
+                <th scope="row"><StandardBadge 코드={s.코드} 링크={false} /></th>
+                {매핑있는출판사.map((p) => {
+                  const m = s.출판사별매핑?.[p.코드];
+                  return (
+                    <td data-pub-col={p.코드}>
+                      {m ? (
+                        <>
+                          <span class="cw-sec">{m.절제목 ?? m.단원명}</span>
+                          {m.쪽수 && m.쪽수 !== '[확인필요]' ? (
+                            <span class="cw-page">{m.쪽수}쪽</span>
+                          ) : (
+                            <span class="cw-page todo">쪽수 [확인필요]</span>
+                          )}
+                        </>
+                      ) : (
+                        <span class="todo">대조 정보 없음 [확인필요]</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="fine">
+      전체 대조표는 <a href={href('/crosswalk/')}>교과서 대조표</a>에서 볼 수 있다.
+      {
+        출판사목록.some((p) => !p.단원목록?.length) &&
+          ' 일부 교과서는 절 제목·쪽수가 아직 확인되지 않았다.'
+      }
+    </p>
+  </div>
+</BaseLayout>
+
+<style>
+  .std-row {
+    padding: var(--space-4) var(--space-5);
+  }
+  .std-row__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-2);
+  }
+  .std-row__src {
+    font-size: 0.76rem;
+    color: var(--c-text-faint);
+  }
+  .std-row__text {
+    margin: 0;
+  }
+  .std-row__note {
+    margin: var(--space-2) 0 0;
+    font-size: 0.84rem;
+    color: var(--c-text-faint);
+  }
+  .cw-sec {
+    display: block;
+    font-size: 0.86rem;
+  }
+  .cw-page {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--c-text-faint);
+  }
+  .cw-page.todo,
+  .todo {
+    color: var(--warn);
+  }
+  td.is-selected,
+  th.is-selected {
+    background: var(--c-primary-soft);
+  }
+  .fine {
+    font-size: 0.84rem;
+    color: var(--c-text-faint);
+  }
+</style>

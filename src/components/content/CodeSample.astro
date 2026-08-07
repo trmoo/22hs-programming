@@ -1,0 +1,284 @@
+---
+/**
+ * 예제 코드 + 기대 출력
+ *
+ * CLAUDE.md 6장 10번: 실행해 보지 않은 예제 코드를 싣지 않는다.
+ * 그래서 기대 출력(expect)을 필수로 받는다. 출력이 없는 코드는 expect=""로 명시한다.
+ *
+ * 언어 모드와 맞지 않는 블록은 CSS로 숨는다(html[data-lang] 기준).
+ * JS가 없으면 기본값 python 블록이 보인다.
+ *
+ * MDX 사용법
+ *   <CodeSample lang="python" caption="첫 프로그램" expect={"안녕하세요\n"}>
+ *   {`print("안녕하세요")`}
+ *   </CodeSample>
+ */
+interface Props {
+  lang: 'python' | 'c';
+  caption?: string;
+  /** 실제 실행해 확인한 표준 출력. 빈 문자열이면 "출력 없음"으로 표시한다. */
+  expect: string;
+  /** 표준 입력이 필요한 예제라면 적는다 (기대 출력은 이 입력을 준 결과여야 한다) */
+  stdin?: string;
+  /** 특별히 실행이 불가한 예제라면 이유를 적는다 (일반적인 C 예제에는 필요 없다) */
+  norun?: string;
+  /**
+   * 복사 단추를 없애고 코드 선택도 막는다.
+   * 학생이 직접 타이핑해야 하는 실습(<CodeTask>) 옆에 두는 예제에 쓴다.
+   * C 예제는 복사해 전산실 컴파일러로 가져가는 것이 정해진 경로이므로
+   * (PLAN.md 결정 항목 6) 함부로 켜지 않는다.
+   */
+  nocopy?: boolean;
+}
+const { lang, caption, expect, stdin, norun, nocopy = false } = Astro.props;
+
+const 라벨 = lang === 'python' ? 'Python' : 'C';
+
+/* C는 브라우저에서 실행하지 않는다(PLAN.md 결정 항목 6).
+   대신 기대 출력을 실제로 컴파일·실행해 확인한 값으로 싣고, 복사해서
+   전산실 컴파일러에서 돌려 보게 한다. Python은 Pyodide로 직접 실행한다. */
+const 브라우저실행 = lang === 'python';
+const 코드 = (await Astro.slots.render('default')).trim();
+---
+
+<div class="code-sample" data-lang-block={lang}>
+  <div class="code-sample__head">
+    <span class="code-sample__lang">{라벨}</span>
+    {caption && <span class="code-sample__caption">{caption}</span>}
+    {
+      !브라우저실행 && (
+        <span class="code-sample__hint" title="C 예제는 브라우저에서 실행하지 않는다. 아래 실행 결과는 컴파일해 확인한 값이다.">
+          확인된 출력
+        </span>
+      )
+    }
+    {
+      nocopy ? (
+        <span class="code-sample__nocopy" title="직접 입력해 보는 예제다. 복사 단추를 두지 않았다.">
+          직접 입력
+        </span>
+      ) : (
+        <button class="code-sample__copy" type="button" data-copy-code>코드 복사</button>
+      )
+    }
+  </div>
+
+  <pre class="code-sample__code" class:list={{ 'code-sample__code--nocopy': nocopy }}><code set:html={코드} /></pre>
+
+  {
+    stdin !== undefined && (
+      <div class="code-sample__io">
+        <span class="code-sample__io-label">입력</span>
+        <pre class="code-sample__io-body">{stdin}</pre>
+      </div>
+    )
+  }
+
+  <div class="code-sample__io">
+    <span class="code-sample__io-label">실행 결과</span>
+    {
+      expect === '' ? (
+        <pre class="code-sample__io-body code-sample__io-body--empty">(화면에 출력되는 내용 없음)</pre>
+      ) : (
+        <pre class="code-sample__io-body">{expect}</pre>
+      )
+    }
+  </div>
+
+  {
+    norun && (
+      <p class="code-sample__norun">
+        <strong>브라우저에서 실행되지 않는 예제다.</strong> {norun} 전산실 컴파일러에 붙여
+        넣어 확인해 보자.
+      </p>
+    )
+  }
+</div>
+
+<style>
+  .code-sample {
+    margin: var(--space-5) 0;
+    border: 1px solid var(--c-code-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--c-code-bg);
+    box-shadow: var(--shadow-md);
+  }
+  .code-sample__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 9px 14px;
+    background: rgb(255 255 255 / 5%);
+    border-bottom: 1px solid var(--c-code-border);
+  }
+  .code-sample__lang {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #0b1220;
+    background: linear-gradient(90deg, #7ee7cf, #8fd3ff);
+    padding: 2px 9px;
+    border-radius: var(--radius-pill);
+    flex: none;
+  }
+  .code-sample__caption {
+    font-size: 0.84rem;
+    color: #b9c7de;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .code-sample__hint {
+    margin-left: auto;
+    flex: none;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #9fd0b4;
+    background: rgb(34 197 94 / 14%);
+    border: 1px solid rgb(34 197 94 / 30%);
+    border-radius: var(--radius-pill);
+    padding: 2px 9px;
+    cursor: help;
+  }
+  .code-sample__hint + .code-sample__copy {
+    margin-left: var(--space-2);
+  }
+
+  .code-sample__copy {
+    margin-left: auto;
+    flex: none;
+    font-family: inherit;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: #c8d5e8;
+    background: rgb(255 255 255 / 8%);
+    border: 1px solid var(--c-code-border);
+    border-radius: var(--radius-sm);
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  .code-sample__copy:hover {
+    background: rgb(255 255 255 / 16%);
+  }
+
+  .code-sample__code {
+    margin: 0;
+    padding: 14px 16px;
+    color: var(--c-code-text);
+    font-size: 0.86rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    tab-size: 4;
+    background: none;
+  }
+
+  .code-sample__io {
+    border-top: 1px dashed var(--c-code-border);
+    padding: 10px 16px;
+    background: var(--c-code-bg-2);
+  }
+  .code-sample__io-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #6f86ab;
+    margin-bottom: 4px;
+  }
+  .code-sample__io-body {
+    margin: 0;
+    font-size: 0.84rem;
+    line-height: 1.65;
+    color: #8ee0ff;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .code-sample__io-body--empty {
+    color: #5b6d8a;
+    font-style: normal;
+  }
+  .code-sample__norun {
+    margin: 0;
+    padding: 10px 16px;
+    border-top: 1px solid var(--c-code-border);
+    background: rgb(180 83 9 / 18%);
+    color: #ffd9a8;
+    font-size: 0.82rem;
+  }
+
+  /* 인쇄할 때는 밝게 — 검은 배경은 토너를 먹는다 */
+  @media print {
+    .code-sample {
+      background: #fff;
+      border-color: #999;
+      box-shadow: none;
+    }
+    .code-sample__head {
+      background: #eee;
+      border-color: #999;
+    }
+    .code-sample__caption,
+    .code-sample__io-label {
+      color: #333;
+    }
+    .code-sample__code,
+    .code-sample__io-body {
+      color: #000;
+    }
+    .code-sample__io {
+      background: #f6f6f6;
+      border-color: #999;
+    }
+    .code-sample__copy {
+      display: none;
+    }
+  }
+
+  /* nocopy — 직접 입력해야 하는 예제.
+     복사 단추를 없애고 글자 선택도 막는다. 완전 차단은 아니며(개발자 도구·
+     다른 창을 거치면 우회된다) 손이 가는 복붙을 기본 행동에서 빼는 수준이다. */
+  .code-sample__nocopy {
+    margin-left: auto;
+    flex: none;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--warn);
+    border: 1px solid currentColor;
+    border-radius: var(--radius-pill);
+    padding: 2px 9px;
+  }
+  .code-sample__code--nocopy {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+</style>
+
+<script>
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-copy-code]')) {
+    btn.addEventListener('click', async () => {
+      const code = btn.closest('.code-sample')?.querySelector('code')?.textContent ?? '';
+      try {
+        await navigator.clipboard.writeText(code);
+        const old = btn.textContent;
+        btn.textContent = '복사했다';
+        setTimeout(() => {
+          btn.textContent = old;
+        }, 1400);
+      } catch {
+        /* 클립보드가 막힌 환경에서는 코드를 선택 상태로 만들어 준다 */
+        const codeEl = btn.closest('.code-sample')?.querySelector('code');
+        if (codeEl) {
+          const r = document.createRange();
+          r.selectNodeContents(codeEl);
+          const sel = window.getSelection();
+          sel?.removeAllRanges();
+          sel?.addRange(r);
+          btn.textContent = '직접 복사(Ctrl+C)';
+        }
+      }
+    });
+  }
+</script>

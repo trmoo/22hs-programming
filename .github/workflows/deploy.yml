@@ -1,0 +1,63 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포는 한 번에 하나만. 밀린 실행은 최신 것만 남긴다.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # C 예제를 실제로 컴파일해 기대 출력과 대조하려면 컴파일러가 필요하다.
+      # zig cc 는 clang 을 그대로 쓰며 내려받기가 빠르다 (tools/check-examples.mjs).
+      - uses: mlugg/setup-zig@v1
+        with:
+          version: 0.13.0
+
+      - run: npm ci
+
+      # 빌드가 곧 검사다 — 데이터·본문·목차·예제·HTML 6단계를 전부 통과해야
+      # dist 가 나온다. 하나라도 실패하면 배포가 멈춘다 (CLAUDE.md 7장).
+      - name: Build (검사 6단계 포함)
+        run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+
+      - uses: actions/configure-pages@v5
+        # 저장소마다 Actions 기본 권한이 달라 Pages 자동 활성화가 거부될 수 있다.
+        # 그때는 Settings → Pages → Source 를 "GitHub Actions" 로 한 번만 바꾼다.
+        continue-on-error: true
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

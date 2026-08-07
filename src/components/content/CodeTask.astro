@@ -1,0 +1,289 @@
+---
+/**
+ * 코드 작성 실습 — 학생이 직접 타이핑한다
+ *
+ * 복사·붙여넣기를 막는다. 예제를 그대로 복사해 붙이면 문법을 손으로 익히는
+ * 과정이 통째로 빠지기 때문이다. 막는 것은 paste·drop·copy·cut·우클릭이며,
+ * 키보드로 한 글자씩 치는 것만 남긴다.
+ *
+ * 완전 차단이 아니다 — 개발자 도구나 다른 창을 거치면 우회된다.
+ * 손이 가는 복붙을 막아 "그냥 붙여 넣기"를 기본 행동에서 빼는 수준이다.
+ * 그래서 이 컴포넌트는 부정행위 방지 장치가 아니라 학습 장치다.
+ *
+ * MDX 사용법
+ *   <CodeTask lang="python" title="합 구하기" expect={"55\n"} hint="…">
+ *   문제 지시문 (마크다운)
+ *   </CodeTask>
+ */
+interface Props {
+  /** 어떤 언어로 적는 실습인가 */
+  lang: 'python' | 'c';
+  title: string;
+  /** 이 코드가 내야 할 출력. 학생이 스스로 대조한다 */
+  expect?: string;
+  /** 막혔을 때 열어 보는 힌트 */
+  hint?: string;
+  /** 처음 칸에 채워 둘 뼈대 코드 (여기부터 이어 쓴다) */
+  skeleton?: string;
+  /** 입력 칸 높이(줄 수) */
+  rows?: number;
+}
+const { lang, title, expect, hint, skeleton = '', rows = 10 } = Astro.props;
+const 라벨 = lang === 'python' ? 'Python' : 'C';
+---
+
+<section class="code-task" data-code-task>
+  <header class="code-task__head">
+    <span class="code-task__kind">코드 작성</span>
+    <h4 class="code-task__title">{title}</h4>
+    <span class="code-task__lang">{라벨}</span>
+  </header>
+
+  <div class="code-task__body">
+    <slot />
+  </div>
+
+  <p class="code-task__rule">
+    <strong>직접 입력해 보자.</strong> 이 칸에는 붙여넣기가 되지 않는다. 예제를 옮겨 적는 것이 아니라
+    손으로 쳐 보아야 문법이 익는다.
+  </p>
+
+  <label class="sr-only" for={`ct-${title}`}>{title} 코드 입력 칸</label>
+  <textarea
+    id={`ct-${title}`}
+    class="code-task__input"
+    rows={rows}
+    spellcheck="false"
+    autocomplete="off"
+    autocorrect="off"
+    autocapitalize="off"
+    data-task-input
+    placeholder={`여기에 ${라벨} 코드를 직접 입력한다`}>{skeleton}</textarea>
+
+  <p class="code-task__blocked" data-task-blocked hidden role="status">
+    붙여넣기는 막혀 있다. 직접 입력해 보자.
+  </p>
+
+  <div class="code-task__foot">
+    <span class="code-task__count" data-task-count>0줄 · 0글자</span>
+    {
+      expect !== undefined && (
+        <details class="code-task__expect">
+          <summary>기대하는 실행 결과 보기</summary>
+          {expect === '' ? (
+            <pre class="code-task__pre code-task__pre--empty">(화면에 출력되는 내용 없음)</pre>
+          ) : (
+            <pre class="code-task__pre">{expect}</pre>
+          )}
+          <p class="code-task__note">
+            직접 실행해 얻은 결과와 위 내용이 같은지 대조해 보자. 다르면 어느 줄에서 갈렸는지 찾는다.
+          </p>
+        </details>
+      )
+    }
+    {
+      hint && (
+        <details class="code-task__hintbox">
+          <summary>힌트 보기</summary>
+          <p>{hint}</p>
+        </details>
+      )
+    }
+  </div>
+</section>
+
+<script>
+  /* 코드 작성 칸에서 복사·붙여넣기를 막는다.
+     JS가 없으면 막히지 않지만, 그때는 안내 문구가 그대로 남아 있어
+     "직접 입력한다"는 규칙 자체는 학생에게 전달된다. */
+  document.querySelectorAll<HTMLElement>('[data-code-task]').forEach((task) => {
+    const input = task.querySelector<HTMLTextAreaElement>('[data-task-input]');
+    const blocked = task.querySelector<HTMLElement>('[data-task-blocked]');
+    const count = task.querySelector<HTMLElement>('[data-task-count]');
+    if (!input) return;
+
+    let 타이머: number | undefined;
+    const 알림 = () => {
+      if (!blocked) return;
+      blocked.hidden = false;
+      window.clearTimeout(타이머);
+      타이머 = window.setTimeout(() => {
+        blocked.hidden = true;
+      }, 2400);
+    };
+
+    /* paste·drop 은 붙여넣기 경로, copy·cut 은 이 칸의 답을 옆으로 나르는 경로다 */
+    for (const ev of ['paste', 'drop', 'copy', 'cut'] as const) {
+      input.addEventListener(ev, (e) => {
+        e.preventDefault();
+        알림();
+      });
+    }
+    /* 우클릭 메뉴의 붙여넣기까지 막는다 */
+    input.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      알림();
+    });
+    /* 드래그로 글자 뭉치를 떨구는 것도 막는다 */
+    input.addEventListener('dragover', (e) => e.preventDefault());
+
+    const 세기 = () => {
+      if (!count) return;
+      const v = input.value;
+      const 줄 = v === '' ? 0 : v.split('\n').length;
+      count.textContent = `${줄}줄 · ${v.length}글자`;
+    };
+    input.addEventListener('input', 세기);
+    세기();
+
+    /* Tab 으로 칸을 빠져나가지 않고 4칸 들여쓰기가 되게 한다.
+       Esc 를 누르면 원래대로 Tab 이 이동키가 되어 키보드 사용자가 갇히지 않는다. */
+    let tab이동 = false;
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        tab이동 = true;
+        return;
+      }
+      if (e.key !== 'Tab' || tab이동) {
+        if (e.key !== 'Tab') tab이동 = false;
+        return;
+      }
+      e.preventDefault();
+      const s = input.selectionStart;
+      const t = input.selectionEnd;
+      input.value = input.value.slice(0, s) + '    ' + input.value.slice(t);
+      input.selectionStart = input.selectionEnd = s + 4;
+      세기();
+    });
+  });
+</script>
+
+<style>
+  .code-task {
+    margin: var(--space-6) 0;
+    border: 1px solid var(--c-border);
+    border-left: 4px solid var(--c-accent);
+    border-radius: var(--radius-md);
+    background: var(--c-surface);
+    overflow: hidden;
+  }
+  .code-task__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    padding: var(--space-3) var(--space-5);
+    background: var(--c-accent-soft);
+    border-bottom: 1px solid var(--c-border);
+  }
+  .code-task__kind {
+    flex: none;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--c-accent);
+    background: var(--c-surface);
+    border-radius: var(--radius-pill);
+    padding: 3px 10px;
+  }
+  .code-task__title {
+    margin: 0;
+    font-size: 1rem;
+  }
+  .code-task__lang {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--c-text-faint);
+  }
+  .code-task__body {
+    padding: var(--space-4) var(--space-5) 0;
+  }
+  .code-task__body :global(p:first-child) {
+    margin-top: 0;
+  }
+  .code-task__rule {
+    margin: var(--space-4) var(--space-5) var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    font-size: 0.88rem;
+    color: var(--c-text-soft);
+    background: var(--c-bg);
+    border-radius: var(--radius-sm);
+  }
+  .code-task__input {
+    display: block;
+    width: calc(100% - var(--space-5) * 2);
+    margin: 0 var(--space-5);
+    padding: var(--space-4);
+    font-family: var(--font-mono);
+    font-size: 0.92rem;
+    line-height: 1.6;
+    tab-size: 4;
+    color: var(--c-text);
+    background: var(--c-bg);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-sm);
+    resize: vertical;
+  }
+  .code-task__input:focus-visible {
+    outline: 2px solid var(--c-primary);
+    outline-offset: 1px;
+  }
+  .code-task__blocked {
+    margin: var(--space-2) var(--space-5) 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--warn);
+  }
+  .code-task__foot {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    padding: var(--space-3) var(--space-5) var(--space-4);
+  }
+  .code-task__count {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--c-text-faint);
+  }
+  .code-task__expect,
+  .code-task__hintbox {
+    font-size: 0.88rem;
+  }
+  .code-task__expect summary,
+  .code-task__hintbox summary {
+    cursor: pointer;
+    color: var(--c-primary);
+    font-weight: 600;
+  }
+  .code-task__pre {
+    margin: var(--space-2) 0 0;
+    padding: var(--space-3);
+    font-family: var(--font-mono);
+    font-size: 0.86rem;
+    white-space: pre-wrap;
+    background: var(--c-bg);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+  }
+  .code-task__pre--empty {
+    color: var(--c-text-faint);
+    font-style: italic;
+  }
+  .code-task__note {
+    margin: var(--space-2) 0 0;
+    font-size: 0.84rem;
+    color: var(--c-text-soft);
+  }
+
+  /* 인쇄할 때는 빈 칸이 종이에 그대로 나와 손으로 적을 수 있게 한다 */
+  @media print {
+    .code-task__input {
+      min-height: 8em;
+    }
+    .code-task__expect,
+    .code-task__hintbox {
+      display: none;
+    }
+  }
+</style>

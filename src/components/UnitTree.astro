@@ -1,0 +1,119 @@
+---
+/**
+ * 좌측 단원 트리
+ *
+ * <details>/<summary>로 만들어 JS 없이도 펼치고 접힌다. 현재 위치가 속한 단원은
+ * 서버에서 open 속성을 붙여 내려보내므로, JS가 죽어도 현재 차시가 보인다.
+ * 펼침 상태는 JS가 있을 때만 localStorage에 기억된다.
+ */
+import { 단원목록, slug, 총차시수 } from '@lib/curriculum';
+import { href, 현재경로인가, 하위경로인가 } from '@lib/url';
+
+interface Props {
+  현재경로: string;
+}
+const { 현재경로 } = Astro.props;
+---
+
+<nav class="tree" aria-labelledby="tree-heading" data-tree>
+  <div class="tree__head">
+    <h2 id="tree-heading">단원</h2>
+    <span class="tree__count">{단원목록.length}단원 · {총차시수}차시</span>
+  </div>
+
+  <ol>
+    {
+      단원목록.map((u) => {
+        const 단원경로 = `/units/${slug(u.단원번호)}/`;
+        const 열림 = 하위경로인가(현재경로, 단원경로);
+        return (
+          <li class="tree__unit">
+            <details open={열림} data-unit={slug(u.단원번호)}>
+              <summary>
+                <span class="caret" aria-hidden="true">▶</span>
+                <span class="u-no">{u.단원번호}</span>
+                <span class="u-title">{u.단원명}</span>
+              </summary>
+
+              <a
+                class="tree__unit-link"
+                href={href(단원경로)}
+                aria-current={현재경로인가(현재경로, 단원경로) ? 'page' : undefined}
+              >
+                단원 열기
+              </a>
+
+              <ol class="tree__lessons">
+                {[...u.차시]
+                  .sort((a, b) => a.차시번호 - b.차시번호)
+                  .map((l) => {
+                    const 차시경로 = `/units/${slug(u.단원번호)}/${slug(l.차시번호)}/`;
+                    return (
+                      <li>
+                        <a
+                          href={href(차시경로)}
+                          aria-current={현재경로인가(현재경로, 차시경로) ? 'page' : undefined}
+                        >
+                          <span class="l-no">{l.차시번호}</span>
+                          <span>{l.차시명}</span>
+                        </a>
+                      </li>
+                    );
+                  })}
+              </ol>
+            </details>
+          </li>
+        );
+      })
+    }
+  </ol>
+
+  <div class="tree__links">
+    <a href={href('/standards/')}>성취기준 색인</a>
+    <a href={href('/crosswalk/')}>교과서 대조표</a>
+  </div>
+</nav>
+
+<script>
+  /* 단원 펼침 상태 기억 — JS가 없으면 서버가 내려준 open 상태가 그대로 쓰인다 */
+  const KEY = 'prog-tree-open';
+  const tree = document.querySelector('[data-tree]');
+  if (tree) {
+    let saved: string[] = [];
+    try {
+      saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+    } catch {
+      saved = [];
+    }
+
+    const all = Array.from(tree.querySelectorAll<HTMLDetailsElement>('details[data-unit]'));
+
+    /* 현재 위치가 든 단원은 항상 열어 둔다. 나머지는 저장된 상태를 따른다. */
+    for (const d of all) {
+      const id = d.dataset.unit!;
+      const 현재포함 = !!d.querySelector('[aria-current="page"]');
+      if (!현재포함) d.open = saved.includes(id);
+    }
+
+    const save = () => {
+      const open = all.filter((d) => d.open).map((d) => d.dataset.unit!);
+      try {
+        localStorage.setItem(KEY, JSON.stringify(open));
+      } catch {
+        /* 저장 실패는 무시한다 — 기능이 아니라 편의다 */
+      }
+    };
+    for (const d of all) d.addEventListener('toggle', save);
+
+    /* 현재 항목을 트리 스크롤 안으로 들여온다 (차시가 많아 화면 밖일 수 있다) */
+    const cur = tree.querySelector('[aria-current="page"]');
+    if (cur) {
+      const box = tree.closest('.col-tree') ?? tree;
+      const cr = cur.getBoundingClientRect();
+      const br = box.getBoundingClientRect();
+      if (cr.top < br.top || cr.bottom > br.bottom) {
+        cur.scrollIntoView({ block: 'center' });
+      }
+    }
+  }
+</script>

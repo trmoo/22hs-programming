@@ -1,0 +1,24 @@
+# 의존성·빌드 산출물
+node_modules/
+dist/
+.astro/
+.vite/
+
+# 교과서 PDF·스캔 이미지 — 저장소·배포물에 넣지 않는다 (CLAUDE.md 6장 2번)
+*.pdf
+*.PDF
+
+# OS·에디터
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# 로그·임시
+*.log
+npm-debug.log*
+.env
+.env.*
+!.env.example

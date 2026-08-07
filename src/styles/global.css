@@ -1,0 +1,366 @@
+@import './tokens.css';
+
+/* ============================================================
+   기본 조판 · 3단 레이아웃 셸 · 반응형 · 인쇄
+
+   반응형 3단계
+     ≥1200px  3단 (트리 / 본문 / 목차)
+     900~1199 2단 (트리 / 본문)  — 목차는 본문 위 접이식
+     <900px   1단 — 트리·목차 모두 서랍
+   ============================================================ */
+
+/* ---------- 리셋 ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* sticky 헤더 높이만큼 앵커 이동 위치를 내린다 */
+  scroll-padding-top: calc(var(--h-topbar) + 16px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: var(--lh-base);
+  color: var(--c-text);
+  background: var(--c-bg);
+  /* 한글은 어절 단위로 줄바꿈한다 */
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img,
+svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+a {
+  color: var(--c-primary-deep);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: 1.35;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-mono);
+}
+
+:not(pre) > code {
+  background: var(--c-primary-soft);
+  color: var(--c-primary-deep);
+  padding: 0.1em 0.4em;
+  border-radius: 5px;
+  font-size: 0.88em;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--c-border);
+  margin: var(--space-6) 0;
+}
+
+/* ---------- 포커스 표시 — 키보드 사용자에게 반드시 보여야 한다 ---------- */
+:focus-visible {
+  outline: 3px solid var(--c-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 마우스 클릭 시에는 링만 숨긴다 (포커스 자체는 유지) */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ---------- 건너뛰기 링크 ---------- */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: calc(var(--z-progress) + 1);
+  background: var(--c-primary-deep);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 0 0 var(--radius-sm) 0;
+  font-weight: 600;
+  text-decoration: none;
+}
+.skip-link:focus {
+  left: 0;
+}
+
+/* ---------- 스크린 리더 전용 ---------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================================================
+   3단 레이아웃
+   ============================================================ */
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--w-tree) minmax(0, 1fr) var(--w-toc);
+  gap: var(--gap-col);
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-5) var(--space-8);
+  align-items: start;
+}
+
+.shell > .col-tree,
+.shell > .col-toc {
+  position: sticky;
+  top: calc(var(--h-topbar) + var(--space-5));
+  max-height: calc(100vh - var(--h-topbar) - var(--space-6));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* 스크롤바가 레이아웃을 흔들지 않게 */
+  scrollbar-gutter: stable;
+}
+
+.col-main {
+  min-width: 0;
+}
+
+.article {
+  max-width: var(--w-article);
+}
+
+/* 2단: 우측 목차를 본문 위로 접어 넣는다 */
+@media (max-width: 1199px) {
+  .shell {
+    grid-template-columns: var(--w-tree) minmax(0, 1fr);
+  }
+  .shell > .col-toc {
+    display: none;
+  }
+  .toc-inline {
+    display: block;
+  }
+}
+
+@media (min-width: 1200px) {
+  .toc-inline {
+    display: none;
+  }
+}
+
+/* 서랍 배경막.
+   기본 규칙을 미디어 쿼리보다 앞에 둔다 — 뒤에 두면 같은 특이도(0,1,0)에서
+   나중 규칙이 이겨 배경막이 영원히 숨는다. */
+.drawer-backdrop {
+  display: none;
+  position: fixed;
+  inset: var(--h-topbar) 0 0 0;
+  background: rgb(16 26 46 / 40%);
+  z-index: calc(var(--z-drawer) - 1);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* 1단: 트리도 서랍으로 */
+@media (max-width: 899px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-4) var(--space-4) var(--space-7);
+  }
+  .shell > .col-tree {
+    position: fixed;
+    inset: var(--h-topbar) auto 0 0;
+    width: min(86vw, 320px);
+    max-height: none;
+    background: var(--c-surface);
+    border-right: 1px solid var(--c-border);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-4);
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    z-index: var(--z-drawer);
+  }
+  body[data-drawer='open'] .shell > .col-tree {
+    transform: translateX(0);
+  }
+  body[data-drawer='open'] .drawer-backdrop {
+    display: block;
+  }
+}
+
+@media (min-width: 900px) {
+  .drawer-backdrop,
+  .drawer-toggle {
+    display: none !important;
+  }
+}
+
+/* ============================================================
+   본문 조판
+   ============================================================ */
+
+.article > * + * {
+  margin-top: var(--space-4);
+}
+
+.article h2 {
+  font-size: 1.42rem;
+  margin-top: var(--space-8);
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid var(--c-primary-soft);
+}
+
+.article h3 {
+  font-size: 1.14rem;
+  margin-top: var(--space-6);
+}
+
+.article ul,
+.article ol {
+  padding-left: 1.4em;
+}
+
+.article li + li {
+  margin-top: var(--space-1);
+}
+
+.article p {
+  text-wrap: pretty;
+}
+
+/* 제목에 마우스를 올리면 앵커 링크가 보인다 */
+.heading-anchor {
+  opacity: 0;
+  margin-left: 0.4em;
+  font-size: 0.8em;
+  text-decoration: none;
+  color: var(--c-text-faint);
+}
+h2:hover > .heading-anchor,
+h3:hover > .heading-anchor,
+.heading-anchor:focus-visible {
+  opacity: 1;
+}
+
+/* ============================================================
+   언어 모드 — [data-lang-block]은 현재 모드와 맞을 때만 보인다
+   JS가 없으면 html[data-lang]이 python이므로 Python 블록이 보인다.
+   ============================================================ */
+
+[data-lang-block] {
+  display: none;
+}
+html[data-lang='python'] [data-lang-block='python'],
+html[data-lang='c'] [data-lang-block='c'] {
+  display: block;
+}
+
+/* 한쪽 언어만 제공하는 경우의 안내 */
+.lang-missing {
+  display: none;
+  background: var(--warn-soft);
+  border-left: 4px solid var(--warn);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.92rem;
+  color: var(--c-text-soft);
+}
+
+/* ============================================================
+   인쇄 — 유인물로 쓰인다
+   ============================================================ */
+
+@media print {
+  :root {
+    --fs-base: 11pt;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  /* 화면 전용 요소는 모두 뺀다 */
+  .topbar,
+  .col-tree,
+  .col-toc,
+  .toc-inline,
+  .scroll-progress,
+  .back-to-top,
+  .nav-foot,
+  .drawer-backdrop,
+  .drawer-toggle,
+  .lang-toggle,
+  .publisher-select,
+  .runner-panel {
+    display: none !important;
+  }
+
+  .shell {
+    display: block;
+    max-width: none;
+    padding: 0;
+  }
+
+  .article {
+    max-width: none;
+  }
+
+  /* 링크 주소를 각주처럼 노출 (종이에서 링크는 못 누른다) */
+  .article a[href^='http']::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.85em;
+    color: #444;
+  }
+
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+
+  pre,
+  table,
+  figure,
+  .box {
+    break-inside: avoid;
+  }
+}
