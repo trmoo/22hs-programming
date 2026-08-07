@@ -1,0 +1,40 @@
+저작권 및 이용 범위
+====================
+
+© 2026 티쳐무 · 모든 권리 보유 (All rights reserved)
+
+고등학교 「프로그래밍」 웹 교과서
+https://github.com/trmoo/22hs-programming
+
+
+* 이 저장소의 코드와 문서, 그리고 배포된 웹페이지의 무단 배포 및 상업적 이용을 금합니다.
+
+* **학교 수업 목적으로만 이용해 주세요.**
+  수업에서 학생에게 주소를 알려 주는 것은 자유롭게 하셔도 됩니다.
+
+* 그 밖의 이용(재배포 · 2차 저작물 · 수업 외 목적)은 먼저 문의해 주세요.
+
+* 오픈소스 라이선스를 붙이지 않았습니다.
+  별도 허락이 없으면 저작권자가 모든 권리를 가집니다.
+  (`package.json` 의 `license` 는 npm 관례에 따라 `UNLICENSED` 로 두었습니다)
+
+교안 · 검정 교과서 · 교수학습 운영 계획 등 원본 자료는 저작권상 저장소에 포함하지 않았습니다.
+(교과서 PDF 는 `.gitignore` 로 제외되어 있습니다.)
+본문에 인용한 2022 개정 교육과정 성취기준은 교육부 고시로, 저작권 보호 대상이 아닙니다.
+
+
+─────────────────────────────────────────────────────────────────────────────
+Copyright and Terms of Use  (English summary)
+─────────────────────────────────────────────────────────────────────────────
+
+© 2026 티쳐무 (Teacher Moo). All rights reserved.
+
+* Unauthorized redistribution and commercial use of the code and the
+  documentation in this repository are prohibited.
+* Please use this for school classroom purposes only. You are free to share
+  the site URL with your students, or to hand out the built single-file
+  HTML in class.
+* For any other use (redistribution, derivative works, or other purposes),
+  please ask first.
+* No open-source license is granted. Unless permission is given separately,
+  the copyright holder retains all rights.

@@ -1,6 +1,8 @@
 {
   "name": "hs-programming-webtextbook",
   "version": "0.0.1",
+  "license": "UNLICENSED",
+  "author": "티쳐무 (trmoo)",
   "private": true,
   "description": "2022 개정 교육과정 고등학교 「프로그래밍」 웹 교과서",
   "type": "module",
