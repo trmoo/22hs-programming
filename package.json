@@ -5,7 +5,7 @@
   "description": "2022 개정 교육과정 고등학교 「프로그래밍」 웹 교과서",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "astro dev",
