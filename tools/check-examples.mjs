@@ -145,6 +145,10 @@ function python실행(code, stdin) {
       input: stdin,
       encoding: 'utf8',
       timeout: 10000,
+      /* 파일을 만드는 예제(2단원 17·18차시)가 저장소를 어지럽히지 않게,
+         그리고 이어 쓰기("a") 예제가 앞 실행의 파일에 덧붙어 기대 출력과
+         어긋나지 않게 임시 폴더에서 돌린다. 예제마다 폴더가 새로 만들어진다. */
+      cwd: dir,
       env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
     });
     if (r.status !== 0) return { err: (r.stderr || '실행 실패').trim() };
@@ -162,7 +166,8 @@ function c실행(code, stdin) {
     writeFileSync(src, code, 'utf8');
     const c = spawnSync(CC.cmd, CC.args(src, exe), { encoding: 'utf8', timeout: 120000 });
     if (c.status !== 0) return { err: `컴파일 실패: ${(c.stderr || '').trim().slice(0, 300)}` };
-    const r = spawnSync(exe, [], { input: stdin, encoding: 'utf8', timeout: 10000 });
+    /* python실행 과 같은 이유로 임시 폴더에서 돌린다 */
+    const r = spawnSync(exe, [], { input: stdin, encoding: 'utf8', timeout: 10000, cwd: dir });
     if (r.status !== 0 && !r.stdout) return { err: (r.stderr || '실행 실패').trim() };
     return { out: r.stdout.replace(/\r\n/g, '\n') };
   } finally {
