@@ -1,0 +1,174 @@
+---
+/**
+ * 상단 바 — 브레드크럼 · 언어 토글 · 출판사 선택
+ *
+ * 언어 토글과 출판사 선택은 전역 상태다. localStorage에 저장되고 html[data-lang],
+ * html[data-publisher]로 반영된다. JS가 없으면 기본값(Python, 출판사 미선택)으로
+ * 동작하며 본문 학습에 지장이 없다.
+ */
+import { 메타, 출판사목록 } from '@lib/curriculum';
+import { href } from '@lib/url';
+
+export interface 크럼 {
+  라벨: string;
+  경로?: string;
+}
+
+interface Props {
+  크럼목록?: 크럼[];
+}
+const { 크럼목록 = [] } = Astro.props;
+---
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button
+      class="drawer-toggle"
+      type="button"
+      data-drawer-toggle
+      aria-expanded="false"
+      aria-controls="unit-tree-col"
+    >
+      <span aria-hidden="true">☰</span>
+      <span class="sr-only">단원 목록 열기</span>
+    </button>
+
+    <a class="topbar__brand" href={href('/')}>
+      {메타.과목명}
+      <span class="sub">웹 교과서</span>
+    </a>
+
+    {
+      크럼목록.length > 0 && (
+        <nav class="crumb" aria-label="현재 위치">
+          <ol>
+            {크럼목록.map((c, i) => (
+              <li>
+                {i > 0 && (
+                  <span class="sep" aria-hidden="true">
+                    ›
+                  </span>
+                )}
+                {c.경로 ? (
+                  <a href={href(c.경로)}>{c.라벨}</a>
+                ) : (
+                  <span aria-current="page">{c.라벨}</span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )
+    }
+
+    <div class="topbar__spacer"></div>
+
+    <div class="publisher-select">
+      <label class="sr-only" for="pub-select">교과서 선택</label>
+      <select id="pub-select" data-publisher-select>
+        <option value="">교과서 선택 안 함</option>
+        {출판사목록.map((p) => <option value={p.코드}>{p.표시명}</option>)}
+      </select>
+    </div>
+
+    <div class="lang-toggle" role="group" aria-label="코드 예제 언어">
+      <button type="button" data-lang-set="python" aria-pressed="true">Python</button>
+      <button type="button" data-lang-set="c" aria-pressed="false">C</button>
+    </div>
+  </div>
+</header>
+
+<script>
+  /* ---------- 언어 모드 ---------- */
+  const LANG_KEY = 'prog-lang';
+  const root = document.documentElement;
+
+  function applyLang(lang: string) {
+    root.dataset.lang = lang;
+    for (const b of document.querySelectorAll<HTMLButtonElement>('[data-lang-set]')) {
+      b.setAttribute('aria-pressed', String(b.dataset.langSet === lang));
+    }
+    /* 이 차시가 해당 언어 예제를 제공하지 않으면 안내를 띄운다 */
+    for (const el of document.querySelectorAll<HTMLElement>('[data-lang-missing]')) {
+      const 없는언어 = (el.dataset.langMissing || '').split(',');
+      el.style.display = 없는언어.includes(lang) ? 'block' : 'none';
+    }
+  }
+
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-lang-set]')) {
+    b.addEventListener('click', () => {
+      const lang = b.dataset.langSet!;
+      try {
+        localStorage.setItem(LANG_KEY, lang);
+      } catch {
+        /* 무시 */
+      }
+      applyLang(lang);
+    });
+  }
+  applyLang(root.dataset.lang || 'python');
+
+  /* ---------- 출판사 선택 ---------- */
+  const PUB_KEY = 'prog-publisher';
+  const sel = document.querySelector<HTMLSelectElement>('[data-publisher-select]');
+
+  function applyPublisher(code: string) {
+    root.dataset.publisher = code;
+    /* 병기 라벨은 선택한 출판사 것만 보인다 */
+    for (const el of document.querySelectorAll<HTMLElement>('[data-pub]')) {
+      el.classList.toggle('is-shown', !!code && el.dataset.pub === code);
+    }
+    /* 대조표에서 선택 출판사 열을 강조한다 */
+    for (const el of document.querySelectorAll<HTMLElement>('[data-pub-col]')) {
+      el.classList.toggle('is-selected', !!code && el.dataset.pubCol === code);
+    }
+  }
+
+  if (sel) {
+    let saved = '';
+    try {
+      saved = localStorage.getItem(PUB_KEY) || '';
+    } catch {
+      saved = '';
+    }
+    if (saved && sel.querySelector(`option[value="${saved}"]`)) sel.value = saved;
+    applyPublisher(sel.value);
+
+    sel.addEventListener('change', () => {
+      try {
+        localStorage.setItem(PUB_KEY, sel.value);
+      } catch {
+        /* 무시 */
+      }
+      applyPublisher(sel.value);
+    });
+  }
+
+  /* ---------- 모바일 서랍 ---------- */
+  const toggle = document.querySelector<HTMLButtonElement>('[data-drawer-toggle]');
+  const backdrop = document.querySelector<HTMLElement>('[data-drawer-backdrop]');
+  const treeCol = document.getElementById('unit-tree-col');
+
+  function setDrawer(open: boolean) {
+    document.body.dataset.drawer = open ? 'open' : 'closed';
+    toggle?.setAttribute('aria-expanded', String(open));
+    if (open) {
+      /* 서랍을 열면 첫 링크로 포커스를 옮긴다 */
+      treeCol?.querySelector<HTMLElement>('a, summary')?.focus();
+    } else {
+      toggle?.focus();
+    }
+  }
+
+  toggle?.addEventListener('click', () => setDrawer(document.body.dataset.drawer !== 'open'));
+  backdrop?.addEventListener('click', () => setDrawer(false));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.body.dataset.drawer === 'open') setDrawer(false);
+  });
+  /* 서랍 안 링크를 누르면 닫는다 */
+  treeCol?.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('a') && window.matchMedia('(max-width: 899px)').matches) {
+      setDrawer(false);
+    }
+  });
+</script>

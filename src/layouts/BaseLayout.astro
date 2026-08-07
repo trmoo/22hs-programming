@@ -1,0 +1,136 @@
+---
+/**
+ * 3단 레이아웃 셸
+ *
+ * 좌: 단원 트리 / 중: 본문 / 우: 목차
+ * 목차 항목이 없으면 우측 칼럼은 렌더링하지 않고 본문이 그 폭을 쓴다.
+ */
+import '../styles/global.css';
+import '../styles/components.css';
+import TopBar, { type 크럼 } from '@components/TopBar.astro';
+import UnitTree from '@components/UnitTree.astro';
+import TocRail, { type 목차항목 } from '@components/TocRail.astro';
+import { 메타 } from '@lib/curriculum';
+import { href } from '@lib/url';
+
+interface Props {
+  제목: string;
+  설명?: string;
+  크럼목록?: 크럼[];
+  목차?: 목차항목[];
+  목차제목?: string;
+}
+const { 제목, 설명, 크럼목록 = [], 목차 = [], 목차제목 } = Astro.props;
+const 현재경로 = Astro.url.pathname;
+const 목차있음 = 목차.length > 0;
+---
+
+<!doctype html>
+<html lang="ko" data-lang="python" data-publisher="">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{제목} · {메타.과목명} 웹 교과서</title>
+    {설명 && <meta name="description" content={설명} />}
+    <meta name="color-scheme" content="light" />
+    <link rel="icon" href={href('/favicon.svg')} type="image/svg+xml" />
+    <!--
+      폰트는 자체 호스팅한다 (CLAUDE.md 6장 11번). public/fonts/ 에 파일을 넣기
+      전까지는 시스템 폰트 폴백으로 동작한다 — 조판이 깨지지 않는다.
+    -->
+    <link rel="stylesheet" href={href('/fonts/pretendard.css')} />
+    <script is:inline>
+      /* 화면이 그려지기 전에 저장된 언어·출판사를 적용한다 (깜빡임 방지) */
+      (function () {
+        try {
+          var l = localStorage.getItem('prog-lang');
+          if (l === 'python' || l === 'c') document.documentElement.dataset.lang = l;
+          var p = localStorage.getItem('prog-publisher');
+          if (p) document.documentElement.dataset.publisher = p;
+        } catch (e) {
+          /* localStorage 차단 환경에서도 기본값으로 동작한다 */
+        }
+      })();
+    </script>
+  </head>
+
+  <body data-drawer="closed">
+    <div class="scroll-progress" data-scroll-progress aria-hidden="true"></div>
+    <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+    <TopBar 크럼목록={크럼목록} />
+
+    <button class="drawer-backdrop" type="button" data-drawer-backdrop aria-hidden="true">
+      <span class="sr-only">단원 목록 닫기</span>
+    </button>
+
+    <div class="shell">
+      <aside class="col-tree" id="unit-tree-col">
+        <UnitTree 현재경로={현재경로} />
+      </aside>
+
+      <main class="col-main" id="main">
+        {
+          목차있음 && (
+            <details class="toc-inline">
+              <summary>이 페이지의 목차</summary>
+              <TocRail 항목={목차} 제목={목차제목} 식별자="inline" />
+            </details>
+          )
+        }
+        <slot />
+      </main>
+
+      {
+        목차있음 && (
+          <aside class="col-toc">
+            <TocRail 항목={목차} 제목={목차제목} 식별자="rail" />
+          </aside>
+        )
+      }
+    </div>
+
+    <footer class="site-footer">
+      <div class="site-footer__inner">
+        <span>
+          2022 개정 교육과정 고등학교 「{메타.과목명}」 웹 교과서 · {메타.과목구분}
+        </span>
+        <span>
+          성취기준 코드 미확정 — 화면의 코드는 <strong>잠정 번호</strong>다.
+        </span>
+      </div>
+    </footer>
+
+    <button class="back-to-top" type="button" data-back-to-top data-visible="false">
+      <span aria-hidden="true">↑</span>
+      <span class="sr-only">맨 위로</span>
+    </button>
+
+    <script>
+      /* 읽기 진행 바 */
+      const bar = document.querySelector<HTMLElement>('[data-scroll-progress]');
+      const top = document.querySelector<HTMLElement>('[data-back-to-top]');
+      let ticking = false;
+
+      function onScroll() {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+          const h = document.documentElement;
+          const max = h.scrollHeight - h.clientHeight;
+          if (bar) bar.style.width = `${max > 0 ? (h.scrollTop / max) * 100 : 0}%`;
+          if (top) top.dataset.visible = String(h.scrollTop > 520);
+          ticking = false;
+        });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+
+      top?.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.querySelector<HTMLElement>('.skip-link')?.blur();
+      });
+    </script>
+  </body>
+</html>

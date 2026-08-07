@@ -1,0 +1,83 @@
+---
+/**
+ * 개념 분할 카드 — 개념을 2~4갈래로 나눠 보일 때
+ *
+ * MDX 사용법
+ *   <MiniCards items={[
+ *     { title: '저급 언어', body: '기계가 이해하기 쉬운 언어' },
+ *     { title: '고급 언어', body: '사람이 이해하기 쉬운 언어' },
+ *   ]} />
+ */
+interface Item {
+  title: string;
+  body: string;
+  /** 카드 머리에 붙일 짧은 라벨 (예: 번호, 분류) */
+  tag?: string;
+}
+interface Props {
+  items: Item[];
+}
+const { items } = Astro.props;
+---
+
+<ul class="mcards" data-count={items.length}>
+  {
+    items.map((it) => (
+      <li class="mcard">
+        {it.tag && <span class="mcard__tag">{it.tag}</span>}
+        <h4 class="mcard__title">{it.title}</h4>
+        <p class="mcard__body" set:html={it.body} />
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .mcards {
+    list-style: none;
+    margin: var(--space-5) 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+  /* 카드가 4개면 2×2 가 보기 좋다 */
+  .mcards[data-count='4'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mcard {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-sm);
+  }
+  .mcard__tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--c-primary-deep);
+    background: var(--c-primary-soft);
+    border-radius: 5px;
+    padding: 1px 7px;
+    margin-bottom: var(--space-2);
+  }
+  .mcard__title {
+    margin: 0 0 var(--space-2);
+    font-size: 1rem;
+  }
+  .mcard__body {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--c-text-soft);
+    line-height: 1.65;
+  }
+
+  @media (max-width: 599px) {
+    .mcards,
+    .mcards[data-count='4'] {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

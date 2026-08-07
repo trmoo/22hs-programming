@@ -1,0 +1,110 @@
+---
+/**
+ * 대조 표 — Python ↔ C 문법 비교에 특히 자주 쓴다.
+ *
+ * MDX 사용법
+ *   <CompareTable
+ *     caption="같은 일을 하는 두 언어의 표기"
+ *     headers={['하는 일', 'Python', 'C']}
+ *     rows={[
+ *       ['화면 출력', '<code>print(x)</code>', '<code>printf("%d", x)</code>'],
+ *     ]} />
+ *
+ * 셀에는 HTML을 쓸 수 있다(인라인 코드 표기 때문에 필요하다).
+ */
+interface Props {
+  headers: string[];
+  rows: string[][];
+  caption?: string;
+  /** 첫 열을 행 제목(th)으로 만들지 */
+  rowHeader?: boolean;
+}
+const { headers, rows, caption, rowHeader = true } = Astro.props;
+
+for (const [i, r] of rows.entries()) {
+  if (r.length !== headers.length) {
+    throw new Error(
+      `CompareTable: ${i + 1}번째 행의 칸 수(${r.length})가 머리글 수(${headers.length})와 다르다`
+    );
+  }
+}
+---
+
+<figure class="ctable">
+  <div class="ctable__scroll">
+    <table>
+      {caption && <caption>{caption}</caption>}
+      <thead>
+        <tr>
+          {headers.map((h) => <th scope="col" set:html={h} />)}
+        </tr>
+      </thead>
+      <tbody>
+        {
+          rows.map((r) => (
+            <tr>
+              {r.map((cell, ci) =>
+                rowHeader && ci === 0 ? (
+                  <th scope="row" set:html={cell} />
+                ) : (
+                  <td set:html={cell} />
+                )
+              )}
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+</figure>
+
+<style>
+  .ctable {
+    margin: var(--space-5) 0;
+  }
+  /* 넓은 표는 페이지가 아니라 자기 컨테이너 안에서 스크롤한다 */
+  .ctable__scroll {
+    overflow-x: auto;
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    background: var(--c-surface);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  caption {
+    caption-side: top;
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 0.84rem;
+    color: var(--c-text-soft);
+    border-bottom: 1px solid var(--c-border);
+  }
+  th,
+  td {
+    padding: 9px 14px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--c-border);
+  }
+  thead th {
+    background: var(--c-surface-2);
+    font-size: 0.82rem;
+    color: var(--c-text-soft);
+    white-space: nowrap;
+  }
+  tbody th {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  tbody tr:last-child th,
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+  td :global(code),
+  th :global(code) {
+    white-space: nowrap;
+  }
+</style>

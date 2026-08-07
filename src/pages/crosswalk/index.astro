@@ -1,0 +1,285 @@
+---
+import BaseLayout from '@layouts/BaseLayout.astro';
+import StandardBadge from '@components/StandardBadge.astro';
+import { 단원목록, 출판사목록, slug, 메타 } from '@lib/curriculum';
+
+const 목차 = [
+  { id: 'how', text: '보는 방법', depth: 2 as const },
+  { id: 'units', text: '단원 수준 대조', depth: 2 as const },
+  { id: 'standards', text: '성취기준 수준 대조', depth: 2 as const },
+  { id: 'books', text: '교과서 서지', depth: 2 as const },
+];
+---
+
+<BaseLayout
+  제목="교과서 대조표"
+  설명={`검정 교과서 ${출판사목록.length}종과 이 웹 교과서의 단원 대응표.`}
+  크럼목록={[{ 라벨: '과목 홈', 경로: '/' }, { 라벨: '교과서 대조표' }]}
+  목차={목차}
+  목차제목="대조표"
+>
+  <div class="hero">
+    <span class="hero__eyebrow">대조표</span>
+    <h1>어느 교과서를 쓰든 찾아오기</h1>
+    <p class="hero__lead">
+      학교에서 쓰는 검정 교과서의 단원이 이 웹 교과서의 어디에 해당하는지 보여 준다.
+      우리 목차는 성취기준에서 나왔고, 교과서 단원명은 참고용 병기다.
+    </p>
+    <div class="hero__meta">
+      <span class="chip">{출판사목록.length}종</span>
+      <span class="chip">Python {출판사목록.filter((p) => p.언어 === 'python').length}종</span>
+      <span class="chip">C {출판사목록.filter((p) => p.언어 === 'c').length}종</span>
+    </div>
+  </div>
+
+  <div class="article">
+    <h2 id="how">보는 방법<a class="heading-anchor" href="#how" aria-hidden="true">#</a></h2>
+    <p>
+      상단의 <strong>교과서 선택</strong>에서 학교 교과서를 고르면 해당 열이 강조되고, 단원
+      페이지에도 그 교과서의 단원명이 함께 표시된다. 선택은 이 브라우저에 저장된다.
+    </p>
+
+    <h2 id="units">
+      단원 수준 대조<a class="heading-anchor" href="#units" aria-hidden="true">#</a>
+    </h2>
+
+    <div class="table-wrap">
+      <table class="tb">
+        <thead>
+          <tr>
+            <th scope="col">이 교과서</th>
+            {
+              출판사목록.map((p) => (
+                <th scope="col" data-pub-col={p.코드}>
+                  {p.표시명}
+                </th>
+              ))
+            }
+          </tr>
+        </thead>
+        <tbody>
+          {
+            단원목록.map((u) => (
+              <tr>
+                <th scope="row">
+                  <span class="ours-no">{u.단원번호}단원</span>
+                  <span class="ours-title">{u.단원명}</span>
+                  <span class="ours-area">{u.영역}</span>
+                </th>
+                {출판사목록.map((p) => {
+                  const 목록 = p.단원목록 ?? [];
+                  const m = 목록.find((x) => x.단원번호 === u.단원번호);
+                  return (
+                    <td data-pub-col={p.코드}>
+                      {m ? (
+                        <>
+                          <span class="cw-sec">{m.단원명}</span>
+                          {m.쪽수 && m.쪽수 !== '[확인필요]' ? (
+                            <span class="cw-page">{m.쪽수}쪽</span>
+                          ) : (
+                            <span class="cw-page todo">쪽수 [확인필요]</span>
+                          )}
+                        </>
+                      ) : (
+                        <span class="todo">[확인필요]</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="standards">
+      성취기준 수준 대조<a class="heading-anchor" href="#standards" aria-hidden="true">#</a>
+    </h2>
+    <p>
+      교과서마다 중단원을 나누는 방식이 다르다. 성취기준을 기준으로 놓으면 정확히 대응한다.
+      한 교과서가 두 성취기준을 한 중단원에 묶은 경우는 셀에 밝혀 두었다.
+    </p>
+
+    <div class="table-wrap">
+      <table class="tb">
+        <thead>
+          <tr>
+            <th scope="col">성취기준</th>
+            {
+              출판사목록.map((p) => (
+                <th scope="col" data-pub-col={p.코드}>
+                  {p.표시명}
+                </th>
+              ))
+            }
+          </tr>
+        </thead>
+        <tbody>
+          {
+            단원목록.flatMap((u) => [
+              <tr class="area-row">
+                <th scope="rowgroup" colspan={출판사목록.length + 1}>
+                  {u.단원번호}단원 · {u.영역}
+                </th>
+              </tr>,
+              ...u.성취기준.map((s) => (
+                <tr>
+                  <th scope="row">
+                    <StandardBadge 코드={s.코드} />
+                    <span class="std-mini">{s.본문}</span>
+                  </th>
+                  {출판사목록.map((p) => {
+                    const m = s.출판사별매핑?.[p.코드];
+                    return (
+                      <td data-pub-col={p.코드}>
+                        {m ? (
+                          <>
+                            <span class="cw-sec">{m.절제목 ?? m.단원명}</span>
+                            {m.쪽수 && m.쪽수 !== '[확인필요]' ? (
+                              <span class="cw-page">{m.쪽수}쪽</span>
+                            ) : (
+                              <span class="cw-page todo">쪽수 [확인필요]</span>
+                            )}
+                          </>
+                        ) : (
+                          <span class="todo">[확인필요]</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              )),
+            ])
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="books">
+      교과서 서지<a class="heading-anchor" href="#books" aria-hidden="true">#</a>
+    </h2>
+    <p>
+      대조에 쓴 교과서와 확인 근거다. 교과서 본문·삽화·문항은 이 사이트에 옮기지 않는다.
+      가져온 것은 대조에 필요한 단원명·절 제목·쪽수뿐이다.
+    </p>
+
+    <ul class="card-list">
+      {
+        출판사목록.map((p) => (
+          <li class="card book" data-pub-col={p.코드}>
+            <div class="book__head">
+              <strong>{p.표시명}</strong>
+              <span class="book__lang">{p.언어 === 'python' ? 'Python' : p.언어 === 'c' ? 'C' : p.언어}</span>
+              <span class={p.확인 ? 'book__ok' : 'book__no'}>
+                {p.확인 ? '확인됨' : '미확인'}
+              </span>
+            </div>
+            {p.근거 && <p class="book__src">{p.근거}</p>}
+          </li>
+        ))
+      }
+    </ul>
+
+    <div class="box box--warn">
+      <span class="box__label">이 대조표의 한계</span>
+      <p>
+        대단원·중단원 수준까지는 확인했으나, 절 단위 세부 쪽수는 교과서마다 확인 정도가
+        다르다. 웅보출판사는 스캔 이미지 PDF여서 목차만 판독했고 본문 내부는 확인하지 못했다.
+        <code>[확인필요]</code>로 표시된 칸은 근거 없이 채우지 않은 것이다.
+      </p>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .ours-no {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--c-primary-deep);
+  }
+  .ours-title {
+    display: block;
+    font-size: 0.92rem;
+  }
+  .ours-area {
+    display: block;
+    font-size: 0.76rem;
+    color: var(--c-text-faint);
+    font-weight: 400;
+  }
+  .std-mini {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: var(--c-text-soft);
+    max-width: 26em;
+  }
+  .cw-sec {
+    display: block;
+    font-size: 0.84rem;
+  }
+  .cw-page {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--c-text-faint);
+  }
+  .cw-page.todo,
+  .todo {
+    color: var(--warn);
+  }
+  .area-row th {
+    background: var(--c-primary-soft);
+    color: var(--c-primary-deep);
+    font-size: 0.82rem;
+  }
+  td.is-selected,
+  th.is-selected {
+    background: var(--c-primary-soft);
+  }
+  .book.is-selected {
+    border-color: var(--c-primary);
+  }
+  .book {
+    padding: var(--space-4) var(--space-5);
+  }
+  .book__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+  .book__lang {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--c-text-soft);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-pill);
+    padding: 2px 9px;
+  }
+  .book__ok {
+    font-size: 0.72rem;
+    color: var(--ok);
+    background: var(--ok-soft);
+    border-radius: var(--radius-pill);
+    padding: 2px 9px;
+    font-weight: 700;
+  }
+  .book__no {
+    font-size: 0.72rem;
+    color: var(--warn);
+    background: var(--warn-soft);
+    border-radius: var(--radius-pill);
+    padding: 2px 9px;
+    font-weight: 700;
+  }
+  .book__src {
+    margin: var(--space-2) 0 0;
+    font-size: 0.8rem;
+    color: var(--c-text-faint);
+  }
+</style>

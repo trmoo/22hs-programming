@@ -1,0 +1,328 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '@layouts/BaseLayout.astro';
+import StandardBadge from '@components/StandardBadge.astro';
+import { 본문컴포넌트, 본문목차 } from '@lib/content';
+import {
+  단원목록,
+  slug,
+  이전다음,
+  성취기준찾기,
+  출판사목록,
+  차시언어,
+  type 단원,
+  type 차시,
+} from '@lib/curriculum';
+import { href } from '@lib/url';
+
+export async function getStaticPaths() {
+  const 본문들 = await getCollection('lessons');
+  return 단원목록.flatMap((u) =>
+    u.차시.map((l) => {
+      /* 본문 파일은 있으면 붙이고 없으면 골격만 렌더링한다.
+         집필 전 차시도 트리·내비게이션에 정상적으로 등장해야 한다. */
+      const 본문 = 본문들.find(
+        (e) => e.data.unit === u.단원번호 && e.data.lesson === l.차시번호
+      );
+      return {
+        params: { unit: slug(u.단원번호), lesson: slug(l.차시번호) },
+        props: { 단원: u, 차시: l, 본문 },
+      };
+    })
+  );
+}
+
+type 본문항목 = Awaited<ReturnType<typeof getCollection<'lessons'>>>[number];
+
+interface Props {
+  단원: 단원;
+  차시: 차시;
+  본문?: 본문항목;
+}
+const { 단원, 차시, 본문 } = Astro.props;
+
+const 렌더된본문 = 본문 ? await render(본문) : null;
+const Content = 렌더된본문?.Content;
+const 본문제목들 = 렌더된본문 ? 본문목차(렌더된본문.headings) : [];
+
+const 경로 = `/units/${slug(단원.단원번호)}/${slug(차시.차시번호)}/`;
+const { 이전, 다음 } = 이전다음(경로);
+const 담당 = 차시.담당성취기준.map((c) => ({ 코드: c, 성취기준: 성취기준찾기(c) }));
+const 언어들 = 차시언어(차시);
+const 없는언어 = (['python', 'c'] as const).filter((l) => 언어들.length > 0 && !언어들.includes(l));
+
+/* 이 차시가 담당하는 성취기준의 교과서 위치를 출판사별로 미리 모아 둔다.
+   템플릿에서 타입 좁히기를 하지 않도록 프런트매터에서 계산한다. */
+const 교과서위치 = 출판사목록
+  .map((p) => {
+    const 매핑들 = 담당
+      .map(({ 코드 }) => 성취기준찾기(코드)?.출판사별매핑?.[p.코드])
+      .filter((m) => m !== undefined);
+    return { 출판사: p, 매핑: 매핑들[0] };
+  })
+  .filter((x) => x.매핑 !== undefined);
+
+/* 본문이 있으면 본문의 제목이 목차의 중심이 된다.
+   없으면 골격 섹션 목차를 그대로 쓴다. */
+const 목차 = [
+  { id: 'objectives', text: '학습 목표', depth: 2 as const },
+  { id: 'standards', text: '담당 성취기준', depth: 2 as const },
+  ...(본문제목들.length
+    ? 본문제목들
+    : [{ id: 'body', text: '본문', depth: 2 as const }]),
+  ...(!본문 && 차시.활동?.length
+    ? [{ id: 'activities', text: '활동', depth: 2 as const }]
+    : []),
+  ...(차시.선수학습.length ? [{ id: 'prereq', text: '이어지는 학습', depth: 2 as const }] : []),
+  { id: 'reference', text: '교과서에서 찾기', depth: 2 as const },
+];
+---
+
+<BaseLayout
+  제목={`${단원.단원번호}단원 ${차시.차시번호}차시 ${차시.차시명}`}
+  설명={차시.학습목표.join(' ')}
+  크럼목록={[
+    { 라벨: '과목 홈', 경로: '/' },
+    { 라벨: `${단원.단원번호}단원 ${단원.단원명}`, 경로: `/units/${slug(단원.단원번호)}/` },
+    { 라벨: `${차시.차시번호}차시` },
+  ]}
+  목차={목차}
+  목차제목={`${차시.차시번호}차시`}
+>
+  <div class="hero">
+    <span class="hero__eyebrow">{단원.단원번호}단원 · {차시.차시번호}차시</span>
+    <h1>{차시.차시명}</h1>
+    <div class="hero__meta">
+      {담당.map(({ 코드 }) => <StandardBadge 코드={코드} />)}
+    </div>
+    <div class="hero__meta">
+      {차시.핵심개념.map((k) => <span class="chip">{k}</span>)}
+    </div>
+    {
+      언어들.length > 0 && (
+        <p class="hero__langs">
+          코드 예제: {언어들.map((l) => (l === 'python' ? 'Python' : 'C')).join(' · ')}
+          {차시.예상시간 ? ` · 예상 ${차시.예상시간}분` : ''}
+        </p>
+      )
+    }
+  </div>
+
+  <div class="article">
+    <h2 id="objectives">
+      학습 목표<a class="heading-anchor" href="#objectives" aria-hidden="true">#</a>
+    </h2>
+    <ul>
+      {차시.학습목표.map((o) => <li>{o}</li>)}
+    </ul>
+
+    <h2 id="standards">
+      담당 성취기준<a class="heading-anchor" href="#standards" aria-hidden="true">#</a>
+    </h2>
+    <ul class="card-list">
+      {
+        담당.map(({ 코드, 성취기준 }) => (
+          <li class="card std-row">
+            <StandardBadge 코드={코드} />
+            <p>{성취기준 ? 성취기준.본문 : '[확인필요]'}</p>
+          </li>
+        ))
+      }
+    </ul>
+
+    {
+      Content ? (
+        <div class="lesson-body">
+          <Content components={본문컴포넌트} />
+        </div>
+      ) : (
+        <>
+          <h2 id="body">본문<a class="heading-anchor" href="#body" aria-hidden="true">#</a></h2>
+          <div class="box box--draft">
+            <span class="box__label">본문 집필 예정</span>
+            <p>
+              이 차시의 설명·예제·확인 문제는 아직 집필되지 않았다. 단원·차시 구조와 성취기준
+              매핑은 확정됐고, 본문은 차례대로 채운다.
+            </p>
+            <p>집필 시 다룰 핵심 개념: {차시.핵심개념.join(', ')}</p>
+          </div>
+        </>
+      )
+    }
+
+    {
+      본문 && 본문.data.todo.length > 0 && (
+        <div class="box box--warn">
+          <span class="box__label">이 차시에 남은 확인 사항</span>
+          <ul>
+            {본문.data.todo.map((t) => (
+              <li>{t}</li>
+            ))}
+          </ul>
+        </div>
+      )
+    }
+
+    {
+      없는언어.length > 0 && (
+        <div class="lang-missing" data-lang-missing={없는언어.join(',')}>
+          이 차시는 {없는언어.map((l) => (l === 'python' ? 'Python' : 'C')).join('·')} 예제를
+          제공하지 않는다. 상단에서 다른 언어로 바꾸면 예제를 볼 수 있다.
+        </div>
+      )
+    }
+
+    {
+      !본문 && 차시.활동 && 차시.활동.length > 0 && (
+        <>
+          <h2 id="activities">
+            활동<a class="heading-anchor" href="#activities" aria-hidden="true">#</a>
+          </h2>
+          <ul class="card-list">
+            {차시.활동.map((a) => (
+              <li class="card act">
+                <span class="act__kind">{a.종류}</span>
+                <span>{a.제목}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )
+    }
+
+    {
+      차시.선수학습.length > 0 && (
+        <>
+          <h2 id="prereq">
+            이어지는 학습<a class="heading-anchor" href="#prereq" aria-hidden="true">#</a>
+          </h2>
+          <p>이 차시를 이해하려면 다음을 먼저 알아야 한다.</p>
+          <ul>
+            {차시.선수학습.map((p) => (
+              <li>
+                {p.내용}
+                {p.과목 && <span class="prereq__src"> — {p.과목}</span>}
+                {p.성취기준코드 && (
+                  <>
+                    {' '}
+                    <StandardBadge 코드={p.성취기준코드} />
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )
+    }
+
+    <h2 id="reference">
+      교과서에서 찾기<a class="heading-anchor" href="#reference" aria-hidden="true">#</a>
+    </h2>
+    {
+      교과서위치.length > 0 ? (
+        <div class="table-wrap">
+          <table class="tb">
+            <thead>
+              <tr>
+                <th scope="col">교과서</th>
+                <th scope="col">해당 위치</th>
+                <th scope="col">쪽수</th>
+              </tr>
+            </thead>
+            <tbody>
+              {교과서위치.map(({ 출판사: p, 매핑: m }) => (
+                <tr data-pub-col={p.코드}>
+                  <th scope="row" style="white-space:nowrap">{p.표시명}</th>
+                  <td>
+                    {m!.단원명}
+                    {m!.절제목 ? ` › ${m!.절제목}` : ''}
+                  </td>
+                  <td style="white-space:nowrap">
+                    {m!.쪽수 && m!.쪽수 !== '[확인필요]' ? (
+                      `${m!.쪽수}쪽`
+                    ) : (
+                      <span class="todo">[확인필요]</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p class="todo">이 차시에 대응하는 교과서 위치가 아직 정리되지 않았다. [확인필요]</p>
+      )
+    }
+
+    <nav class="nav-foot" aria-label="차시 이동">
+      {
+        이전 ? (
+          <a href={href(이전.경로)}>
+            <span class="dir">← 이전</span>
+            <span class="where">{이전.라벨} · {이전.제목}</span>
+          </a>
+        ) : (
+          <a href={href(`/units/${slug(단원.단원번호)}/`)}>
+            <span class="dir">← 이전</span>
+            <span class="where">단원 열기</span>
+          </a>
+        )
+      }
+      {
+        다음 ? (
+          <a class="next" href={href(다음.경로)}>
+            <span class="dir">다음 →</span>
+            <span class="where">{다음.라벨} · {다음.제목}</span>
+          </a>
+        ) : (
+          <a class="next" href={href('/standards/')}>
+            <span class="dir">다음 →</span>
+            <span class="where">성취기준 색인</span>
+          </a>
+        )
+      }
+    </nav>
+  </div>
+</BaseLayout>
+
+<style>
+  .hero__langs {
+    margin: var(--space-4) 0 0;
+    font-size: 0.84rem;
+    color: var(--c-text-faint);
+    font-family: var(--font-mono);
+  }
+  .std-row {
+    padding: var(--space-4) var(--space-5);
+  }
+  .std-row p {
+    margin: var(--space-2) 0 0;
+  }
+  .act {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+  .act__kind {
+    flex: none;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--c-accent);
+    background: var(--c-accent-soft);
+    border-radius: var(--radius-pill);
+    padding: 3px 10px;
+  }
+  .prereq__src {
+    color: var(--c-text-faint);
+    font-size: 0.86rem;
+  }
+  .todo {
+    color: var(--warn);
+  }
+  td.is-selected,
+  th.is-selected,
+  tr.is-selected > * {
+    background: var(--c-primary-soft);
+  }
+</style>

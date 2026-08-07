@@ -1,0 +1,76 @@
+---
+/**
+ * 활동 · 실습 블록
+ *
+ * MDX 사용법
+ *   <Activity kind="실습" title="언어 비교표 채우기" time={15}>…</Activity>
+ */
+interface Props {
+  kind: '실습' | '시뮬레이터' | '토의' | '프로젝트' | '조사';
+  title: string;
+  /** 예상 소요 시간(분) */
+  time?: number;
+}
+const { kind, title, time } = Astro.props;
+---
+
+<section class="activity">
+  <header class="activity__head">
+    <span class="activity__kind">{kind}</span>
+    <h4 class="activity__title">{title}</h4>
+    {time && <span class="activity__time">약 {time}분</span>}
+  </header>
+  <div class="activity__body">
+    <slot />
+  </div>
+</section>
+
+<style>
+  .activity {
+    margin: var(--space-5) 0;
+    border: 1.5px solid var(--c-accent);
+    border-radius: var(--radius);
+    background: var(--c-surface);
+    overflow: hidden;
+  }
+  .activity__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 11px var(--space-4);
+    background: var(--c-accent-soft);
+    flex-wrap: wrap;
+  }
+  .activity__kind {
+    flex: none;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #fff;
+    background: var(--c-accent);
+    border-radius: var(--radius-pill);
+    padding: 3px 10px;
+  }
+  .activity__title {
+    margin: 0;
+    font-size: 1rem;
+  }
+  .activity__time {
+    margin-left: auto;
+    font-size: 0.78rem;
+    color: var(--c-text-soft);
+    font-family: var(--font-mono);
+  }
+  .activity__body {
+    padding: var(--space-4);
+  }
+  .activity__body :global(> :first-child) {
+    margin-top: 0;
+  }
+  .activity__body :global(> :last-child) {
+    margin-bottom: 0;
+  }
+  .activity__body :global(ol),
+  .activity__body :global(ul) {
+    padding-left: 1.4em;
+  }
+</style>

@@ -1,0 +1,91 @@
+---
+/**
+ * 더 알아보기 — 접기 블록
+ *
+ * <details>로 만들어 JS 없이도 열린다. 인쇄할 때는 펼쳐서 나온다.
+ *
+ * MDX 사용법
+ *   <MoreBox tag="인물" title="에이다 러브레이스">…</MoreBox>
+ */
+interface Props {
+  title: string;
+  /** 분류 라벨 — 인물 / 역사 / 심화 / 진로 등 */
+  tag?: string;
+}
+const { title, tag } = Astro.props;
+---
+
+<details class="morebox">
+  <summary>
+    {tag && <span class="morebox__tag">{tag}</span>}
+    <span class="morebox__title">{title}</span>
+  </summary>
+  <div class="morebox__body">
+    <slot />
+  </div>
+</details>
+
+<style>
+  .morebox {
+    margin: var(--space-3) 0;
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 12px var(--space-4);
+    cursor: pointer;
+    font-weight: 600;
+    list-style: none;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  summary::after {
+    content: '＋';
+    margin-left: auto;
+    color: var(--c-text-faint);
+    font-weight: 400;
+  }
+  .morebox[open] summary::after {
+    content: '－';
+  }
+  summary:hover {
+    background: var(--c-surface-2);
+  }
+  .morebox__tag {
+    flex: none;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--c-accent);
+    background: var(--c-accent-soft);
+    border-radius: var(--radius-pill);
+    padding: 2px 9px;
+  }
+  .morebox__body {
+    padding: 0 var(--space-4) var(--space-4);
+    font-size: 0.94rem;
+    border-top: 1px solid var(--c-border);
+    padding-top: var(--space-3);
+  }
+  .morebox__body :global(> :first-child) {
+    margin-top: 0;
+  }
+  .morebox__body :global(> :last-child) {
+    margin-bottom: 0;
+  }
+
+  @media print {
+    /* 종이에서는 접힌 내용도 보여야 한다 */
+    .morebox__body {
+      display: block !important;
+    }
+    summary::after {
+      content: '';
+    }
+  }
+</style>

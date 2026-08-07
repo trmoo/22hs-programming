@@ -1,0 +1,152 @@
+---
+import BaseLayout from '@layouts/BaseLayout.astro';
+import StandardBadge from '@components/StandardBadge.astro';
+import { 단원목록, 성취기준별차시, slug, 전체성취기준, 메타 } from '@lib/curriculum';
+import { href } from '@lib/url';
+
+const 미담당 = 전체성취기준.filter((s) => !성취기준별차시.get(s.코드)?.length);
+
+const 목차 = [
+  { id: 'coverage', text: '커버리지', depth: 2 as const },
+  ...단원목록.map((u) => ({
+    id: `unit-${slug(u.단원번호)}`,
+    text: `${u.단원번호}단원 ${u.영역}`,
+    depth: 2 as const,
+  })),
+];
+---
+
+<BaseLayout
+  제목="성취기준 색인"
+  설명={`「${메타.과목명}」 성취기준 ${전체성취기준.length}개와 담당 차시.`}
+  크럼목록={[{ 라벨: '과목 홈', 경로: '/' }, { 라벨: '성취기준 색인' }]}
+  목차={목차}
+  목차제목="성취기준"
+>
+  <div class="hero">
+    <span class="hero__eyebrow">성취기준 색인</span>
+    <h1>성취기준 → 차시</h1>
+    <p class="hero__lead">
+      성취기준마다 어느 차시가 담당하는지 보여 준다. 담당 차시가 없는 성취기준은
+      커버리지 구멍이다.
+    </p>
+    <div class="hero__meta">
+      <span class="chip">성취기준 {전체성취기준.length}개</span>
+      <span class="chip">{단원목록.length}개 영역</span>
+    </div>
+  </div>
+
+  <div class="article">
+    <h2 id="coverage">커버리지<a class="heading-anchor" href="#coverage" aria-hidden="true">#</a></h2>
+
+    {
+      미담당.length === 0 ? (
+        <div class="box">
+          <span class="box__label">커버리지 100%</span>
+          <p>
+            {전체성취기준.length}개 성취기준 전부에 담당 차시가 있다. 빠진 성취기준은 없다.
+          </p>
+        </div>
+      ) : (
+        <div class="box box--warn">
+          <span class="box__label">담당 차시가 없는 성취기준 {미담당.length}개</span>
+          <ul>
+            {미담당.map((s) => (
+              <li>
+                <StandardBadge 코드={s.코드} 링크={false} /> {s.본문}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )
+    }
+
+    <div class="box box--warn">
+      <span class="box__label">코드는 잠정 번호다</span>
+      <p>
+        「{메타.과목명}」의 성취기준 고시 코드를 확보하지 못했다. 아래 코드는 우리가 붙인
+        <strong>잠정 번호</strong>이며 고시 코드가 아니다. 성취기준 <strong>본문</strong>은
+        검정 교과서에 인쇄된 원문을 그대로 옮긴 것이다.
+      </p>
+    </div>
+
+    {
+      단원목록.map((u) => (
+        <>
+          <h2 id={`unit-${slug(u.단원번호)}`}>
+            {u.단원번호}단원 {u.영역}
+            <a class="heading-anchor" href={`#unit-${slug(u.단원번호)}`} aria-hidden="true">
+              #
+            </a>
+          </h2>
+
+          <ul class="card-list">
+            {u.성취기준.map((s) => {
+              const 담당 = 성취기준별차시.get(s.코드) ?? [];
+              return (
+                <li class="card std-entry" id={s.코드}>
+                  <div class="std-entry__head">
+                    <StandardBadge 코드={s.코드} 링크={false} />
+                    <span class="std-entry__count">
+                      담당 차시 {담당.length}개
+                    </span>
+                  </div>
+                  <p class="std-entry__text">{s.본문}</p>
+                  {담당.length > 0 && (
+                    <ul class="std-entry__lessons">
+                      {담당.map(({ 단원: du, 차시: dl }) => (
+                        <li>
+                          <a href={href(`/units/${slug(du.단원번호)}/${slug(dl.차시번호)}/`)}>
+                            {du.단원번호}단원 {dl.차시번호}차시 · {dl.차시명}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {s.출처 && (
+                    <p class="std-entry__src">
+                      근거: {s.출처.문서}
+                      {s.출처.구간 ? ` (${s.출처.구간})` : ''}
+                      {s.출처.확인일 ? ` · 확인 ${s.출처.확인일}` : ''}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      ))
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .std-entry {
+    padding: var(--space-4) var(--space-5);
+    scroll-margin-top: calc(var(--h-topbar) + 20px);
+  }
+  .std-entry__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+  .std-entry__count {
+    font-size: 0.76rem;
+    color: var(--c-text-faint);
+    font-family: var(--font-mono);
+  }
+  .std-entry__text {
+    margin: var(--space-2) 0 0;
+  }
+  .std-entry__lessons {
+    margin: var(--space-3) 0 0;
+    padding-left: 1.2em;
+    font-size: 0.9rem;
+  }
+  .std-entry__src {
+    margin: var(--space-3) 0 0;
+    font-size: 0.76rem;
+    color: var(--c-text-faint);
+  }
+</style>

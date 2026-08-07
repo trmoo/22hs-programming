@@ -1,0 +1,41 @@
+---
+/**
+ * 성취기준 배지
+ *
+ * 코드는 반드시 데이터에서 온다. 잠정 코드일 때는 "잠정"을 함께 노출해
+ * 고시 코드로 오인되지 않게 한다 (CLAUDE.md 3-3).
+ */
+import { 잠정코드인가, 성취기준찾기 } from '@lib/curriculum';
+import { href } from '@lib/url';
+
+interface Props {
+  코드: string;
+  링크?: boolean;
+  본문표시?: boolean;
+}
+const { 코드, 링크 = true, 본문표시 = false } = Astro.props;
+
+const 잠정 = 잠정코드인가(코드);
+/* "잠정" 칩을 따로 붙이므로 코드 문자열에서는 접두어를 뺀다 —
+   그대로 두면 "잠정잠정02-04"처럼 겹쳐 읽힌다. */
+const 표시코드 = 잠정 ? 코드.replace(/^잠정/, '') : 코드;
+const s = 성취기준찾기(코드);
+const 제목 = s ? s.본문 : '';
+const Tag = 링크 ? 'a' : 'span';
+const attrs = 링크 ? { href: href(`/standards/#${encodeURIComponent(코드)}`) } : {};
+---
+
+<Tag class="std-badge" {...attrs} title={제목 || undefined}>
+  {잠정 && <span class="std-badge__prov">잠정</span>}
+  <span class="std-badge__code">{표시코드}</span>
+  {잠정 && <span class="sr-only">(잠정 번호 {코드}, 고시 코드 아님)</span>}
+</Tag>{
+  본문표시 && 제목 && <span class="std-badge-text"> {제목}</span>
+}
+
+<style>
+  .std-badge-text {
+    font-size: 0.92rem;
+    color: var(--c-text-soft);
+  }
+</style>

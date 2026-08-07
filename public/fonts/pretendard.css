@@ -1,0 +1,26 @@
+/* ============================================================
+   Pretendard 자체 호스팅
+
+   CLAUDE.md 6장 11번: 필수 자산을 외부 CDN에만 의존하지 않는다.
+   학교망에서 CDN이 막히면 조판이 깨지기 때문이다.
+
+   폰트 파일을 아직 넣지 않았다. 아래 @font-face 는 파일이 있을 때 동작하고,
+   없으면 tokens.css 의 시스템 폰트 폴백(Malgun Gothic / Apple SD Gothic Neo)이
+   그대로 쓰인다 — 조판이 깨지지 않는다.
+
+   넣는 방법:
+     1. https://github.com/orioncactus/pretendard 릴리스에서
+        PretendardVariable.woff2 를 받는다 (약 1.1MB)
+     2. 이 폴더(public/fonts/)에 둔다
+     3. 아래 주석을 해제한다
+   ============================================================ */
+
+/*
+@font-face {
+  font-family: 'Pretendard Variable';
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+  src: url('./PretendardVariable.woff2') format('woff2-variations');
+}
+*/

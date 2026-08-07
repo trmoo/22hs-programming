@@ -1,0 +1,77 @@
+---
+/**
+ * 정보 박스 — 본문 흐름을 끊어 강조할 때 쓴다.
+ *
+ * MDX 사용법
+ *   <InfoBox variant="tip" label="핵심">…</InfoBox>
+ */
+interface Props {
+  variant?: 'think' | 'tip' | 'info' | 'warn' | 'story';
+  label?: string;
+}
+const { variant = 'info', label } = Astro.props;
+
+const 기본라벨: Record<string, string> = {
+  think: '함께 생각해 보기',
+  tip: '알아 두기',
+  info: '짚고 가기',
+  warn: '주의',
+  story: '이야기',
+};
+const 표시라벨 = label ?? 기본라벨[variant];
+---
+
+<aside class:list={['ibox', `ibox--${variant}`]}>
+  <span class="ibox__label">{표시라벨}</span>
+  <div class="ibox__body">
+    <slot />
+  </div>
+</aside>
+
+<style>
+  .ibox {
+    margin: var(--space-5) 0;
+    padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius);
+    border-left: 4px solid var(--c-primary);
+    background: var(--c-primary-soft);
+  }
+  .ibox__label {
+    display: block;
+    font-weight: 700;
+    font-size: 0.84rem;
+    color: var(--c-primary-deep);
+    margin-bottom: var(--space-2);
+  }
+  .ibox__body :global(> :first-child) {
+    margin-top: 0;
+  }
+  .ibox__body :global(> :last-child) {
+    margin-bottom: 0;
+  }
+  .ibox__body :global(p) {
+    margin: var(--space-2) 0;
+  }
+
+  .ibox--think {
+    border-left-color: var(--c-accent);
+    background: var(--c-accent-soft);
+  }
+  .ibox--think .ibox__label {
+    color: color-mix(in srgb, var(--c-accent) 80%, #000);
+  }
+  .ibox--warn {
+    border-left-color: var(--warn);
+    background: var(--warn-soft);
+  }
+  .ibox--warn .ibox__label {
+    color: var(--warn);
+  }
+  .ibox--story {
+    border-left-color: var(--c-border-strong);
+    background: var(--c-surface-2);
+  }
+  .ibox--story .ibox__label {
+    color: var(--c-text-soft);
+  }
+</style>

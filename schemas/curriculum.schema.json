@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wonedu.org/schemas/curriculum.schema.json",
+  "title": "웹교과서 교육과정 데이터",
+  "description": "2022 개정 교육과정 기반 웹 교과서의 단원·차시·성취기준·출판사 대조 데이터. 확인되지 않은 값은 반드시 문자열 \"[확인필요]\"로 표기한다.",
+  "type": "object",
+  "required": ["메타", "출판사", "단원"],
+  "additionalProperties": false,
+
+  "properties": {
+    "$schema": { "type": "string" },
+
+    "메타": {
+      "type": "object",
+      "description": "과목 수준 메타데이터. 성취기준 원본의 출처를 반드시 남긴다.",
+      "required": ["과목명", "학교급", "과목구분", "성취기준코드접두어", "출처", "확인", "작성일"],
+      "additionalProperties": false,
+      "properties": {
+        "과목명": { "$ref": "#/$defs/문자열" },
+        "학교급": { "enum": ["초등학교", "중학교", "고등학교"] },
+        "과목구분": {
+          "description": "일반 선택 / 진로 선택 / 융합 선택 / 전문 교과 등",
+          "$ref": "#/$defs/문자열"
+        },
+        "성취기준코드접두어": {
+          "description": "예: 12프로. 과목 약칭은 1~3자다(정, 인기, 데과, 소생). 확인 전에는 \"[확인필요]\".",
+          "oneOf": [
+            { "type": "string", "pattern": "^(9|12)[가-힣]{1,3}$" },
+            { "const": "[확인필요]" }
+          ]
+        },
+        "학점": { "type": ["integer", "null"], "minimum": 1, "maximum": 8 },
+        "총차시": { "type": ["integer", "null"], "minimum": 1 },
+        "출처": { "$ref": "#/$defs/출처" },
+        "확인": {
+          "type": "boolean",
+          "description": "성취기준 원문을 고시 원본에서 확인했는가. false면 이 파일은 골격일 뿐이다."
+        },
+        "작성일": { "$ref": "#/$defs/날짜" },
+        "비고": { "type": "string" }
+      }
+    },
+
+    "출판사": {
+      "type": "array",
+      "description": "대조표에 쓰는 검정 교과서 목록. 목차 구조의 근거로 삼지 않는다.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["코드", "표시명", "언어", "확인"],
+        "additionalProperties": false,
+        "properties": {
+          "코드": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{1,31}$",
+            "description": "출판사별매핑의 키로 쓰인다. 영문 소문자·하이픈."
+          },
+          "표시명": { "type": "string", "minLength": 1 },
+          "언어": { "enum": ["python", "c", "기타", "[확인필요]"] },
+          "확인": {
+            "type": "boolean",
+            "description": "실제 교과서에서 단원 구성을 확인했는가."
+          },
+          "근거": {
+            "type": "string",
+            "description": "확인한 출처. 확인: true면 필수적으로 채운다."
+          },
+          "단원목록": {
+            "type": "array",
+            "description": "해당 교과서의 단원 구성. 확인 전에는 빈 배열.",
+            "items": {
+              "type": "object",
+              "required": ["단원번호", "단원명"],
+              "additionalProperties": false,
+              "properties": {
+                "단원번호": { "type": "integer", "minimum": 1 },
+                "단원명": { "$ref": "#/$defs/문자열" },
+                "쪽수": { "$ref": "#/$defs/쪽수" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "단원": {
+      "type": "array",
+      "description": "우리 사이트의 단원. 성취기준 영역에서 도출하며 출판사 구성을 따르지 않는다.",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/단원" }
+    }
+  },
+
+  "$defs": {
+    "문자열": {
+      "description": "내용이 있는 문자열. 미확인 값은 \"[확인필요]\".",
+      "type": "string",
+      "minLength": 1
+    },
+
+    "날짜": {
+      "type": ["string", "null"],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+
+    "쪽수": {
+      "description": "예: \"12~31\", \"45\". 미확인은 \"[확인필요]\", 해당 없음은 null.",
+      "type": ["string", "null"],
+      "pattern": "^(\\d+(~\\d+)?|\\[확인필요\\])$"
+    },
+
+    "성취기준코드": {
+      "description": "고시 코드(예: 12프로01-01, 12정03-05) / 잠정 코드(예: 잠정01-01) / 미확인(\"[확인필요]\"). 고시 코드를 확보하지 못한 과목은 잠정 코드를 쓴다 — 고시 코드로 오인될 표기를 만들지 않기 위한 장치다.",
+      "oneOf": [
+        { "type": "string", "pattern": "^(9|12)[가-힣]{1,3}\\d{2}-\\d{2}$" },
+        { "type": "string", "pattern": "^잠정\\d{2}-\\d{2}$" },
+        { "const": "[확인필요]" }
+      ]
+    },
+
+    "출처": {
+      "type": "object",
+      "required": ["문서", "확인일"],
+      "additionalProperties": false,
+      "properties": {
+        "문서": { "$ref": "#/$defs/문자열" },
+        "구간": { "type": ["string", "null"], "description": "쪽수 구간 등" },
+        "확인일": { "$ref": "#/$defs/날짜" },
+        "url": { "type": ["string", "null"] }
+      }
+    },
+
+    "성취기준": {
+      "type": "object",
+      "required": ["코드", "본문"],
+      "additionalProperties": false,
+      "properties": {
+        "코드": { "$ref": "#/$defs/성취기준코드" },
+        "본문": {
+          "description": "고시 원문을 그대로 옮긴다. 요약·의역하지 않는다.",
+          "$ref": "#/$defs/문자열"
+        },
+        "해설": { "type": ["string", "null"], "description": "성취기준 해설" },
+        "고려사항": { "type": ["string", "null"], "description": "성취기준 적용 시 고려 사항" },
+        "출처": {
+          "description": "이 성취기준 본문을 어디서 확인했는가. 고시 원문이 아닌 경로로 복원했다면 반드시 남긴다.",
+          "$ref": "#/$defs/출처"
+        },
+        "출판사별매핑": {
+          "description": "성취기준(=대개 중단원) 단위의 교과서 대조. 키는 출판사[].코드. 차시 단위 대조는 차시.출판사별매핑을 쓴다.",
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z][a-z0-9-]{1,31}$" },
+          "additionalProperties": { "$ref": "#/$defs/출판사매핑항목" }
+        }
+      }
+    },
+
+    "선수학습": {
+      "type": "object",
+      "required": ["내용"],
+      "additionalProperties": false,
+      "properties": {
+        "내용": { "$ref": "#/$defs/문자열" },
+        "과목": { "type": ["string", "null"], "description": "예: 정보, 중학교 정보" },
+        "성취기준코드": {
+          "oneOf": [{ "$ref": "#/$defs/성취기준코드" }, { "type": "null" }]
+        }
+      }
+    },
+
+    "출판사매핑항목": {
+      "type": "object",
+      "description": "이 차시에 대응하는 해당 교과서의 위치.",
+      "required": ["단원명", "쪽수"],
+      "additionalProperties": false,
+      "properties": {
+        "단원명": { "$ref": "#/$defs/문자열" },
+        "절제목": { "type": ["string", "null"] },
+        "쪽수": { "$ref": "#/$defs/쪽수" }
+      }
+    },
+
+    "차시": {
+      "type": "object",
+      "required": [
+        "차시번호",
+        "차시명",
+        "담당성취기준",
+        "학습목표",
+        "핵심개념",
+        "선수학습",
+        "출판사별매핑",
+        "상태"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "차시번호": { "type": "integer", "minimum": 1 },
+        "차시명": { "$ref": "#/$defs/문자열" },
+        "담당성취기준": {
+          "description": "이 차시가 담당하는 성취기준 코드. 최소 1개 — 빈 배열은 규칙 위반.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/성취기준코드" }
+        },
+        "학습목표": {
+          "description": "\"…한다\" 형태 평서문 2~3개.",
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/문자열" }
+        },
+        "핵심개념": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/문자열" }
+        },
+        "선수학습": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/선수학습" }
+        },
+        "출판사별매핑": {
+          "description": "키는 출판사[].코드. 대조 정보가 없는 출판사는 키를 생략한다.",
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z][a-z0-9-]{1,31}$" },
+          "additionalProperties": { "$ref": "#/$defs/출판사매핑항목" }
+        },
+        "언어": {
+          "description": "이 차시가 코드 예제를 제공하는 언어.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["python", "c"] }
+        },
+        "예상시간": { "type": ["integer", "null"], "minimum": 10, "maximum": 200 },
+        "활동": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["종류", "제목"],
+            "additionalProperties": false,
+            "properties": {
+              "종류": { "enum": ["실습", "시뮬레이터", "토의", "프로젝트", "조사"] },
+              "제목": { "$ref": "#/$defs/문자열" }
+            }
+          }
+        },
+        "상태": {
+          "description": "published는 [확인필요]가 0건일 때만 허용된다.",
+          "enum": ["draft", "review", "published"]
+        }
+      }
+    },
+
+    "단원": {
+      "type": "object",
+      "required": ["단원번호", "영역", "단원명", "성취기준", "차시"],
+      "additionalProperties": false,
+      "properties": {
+        "단원번호": { "type": "integer", "minimum": 1 },
+        "영역": {
+          "description": "교육과정 내용 체계의 영역명. 미확인은 \"[확인필요]\".",
+          "$ref": "#/$defs/문자열"
+        },
+        "단원명": { "$ref": "#/$defs/문자열" },
+        "단원개요": { "type": ["string", "null"] },
+        "핵심아이디어": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/문자열" }
+        },
+        "성취기준": {
+          "description": "이 단원이 담당하는 성취기준 전체.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/성취기준" }
+        },
+        "차시": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/차시" }
+        }
+      }
+    }
+  }
+}

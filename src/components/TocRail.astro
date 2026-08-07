@@ -1,0 +1,111 @@
+---
+/**
+ * 우측 목차
+ *
+ * 서버에서 넘겨받은 제목 목록으로 정적 렌더링한다 — JS 없이도 목차가 보이고 눌린다.
+ * 스크롤 위치에 따른 강조만 JS가 담당한다.
+ */
+export interface 목차항목 {
+  id: string;
+  text: string;
+  depth: 2 | 3;
+}
+
+interface Props {
+  항목: 목차항목[];
+  제목?: string;
+  /** 목차는 한 페이지에 두 번(우측 레일·본문 위 접이식) 렌더링된다.
+      제목 id가 겹치면 HTML이 유효하지 않고 aria-labelledby가 깨지므로 구분한다. */
+  식별자?: string;
+}
+const { 항목, 제목 = '이 페이지', 식별자 = 'rail' } = Astro.props;
+const 제목id = `toc-heading-${식별자}`;
+---
+
+{
+  항목.length > 0 && (
+    <nav class="toc" aria-labelledby={제목id} data-toc>
+      <h2 id={제목id}>{제목}</h2>
+      <ol>
+        {항목.map((h) => (
+          <li>
+            <a href={`#${h.id}`} data-depth={h.depth} data-toc-link={h.id}>
+              {h.text}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  )
+}
+
+<script>
+  /* 스크롤 연동 강조.
+     판정 규칙은 src/lib/toc.ts 의 순수 함수에 있고 tools/test-toc.mjs 가 검증한다.
+     여기서는 좌표를 읽어 넘기고 클래스를 칠하는 일만 한다. */
+  import { 강조할제목, type 제목위치 } from '@lib/toc';
+
+  const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-toc-link]'));
+
+  if (links.length) {
+    /* 목차는 두 곳(우측 레일 · 본문 위 접이식)에 렌더링될 수 있으므로
+       같은 id를 가리키는 링크를 모두 모아 함께 칠한다. */
+    const byId = new Map<string, HTMLAnchorElement[]>();
+    for (const a of links) {
+      const id = a.dataset.tocLink!;
+      const arr = byId.get(id) ?? [];
+      arr.push(a);
+      byId.set(id, arr);
+    }
+
+    const ids = [...byId.keys()];
+    const els = ids
+      .map((id) => document.getElementById(id))
+      .filter((el) => el !== null) as HTMLElement[];
+
+    /* 제목 좌표는 폰트 로드·이미지 삽입으로 바뀔 수 있으니 그때마다 다시 잰다 */
+    let 제목들: 제목위치[] = [];
+    const 좌표재측정 = () => {
+      제목들 = els
+        .map((el) => ({ id: el.id, top: el.getBoundingClientRect().top + window.scrollY }))
+        .sort((a, b) => a.top - b.top);
+    };
+
+    const paint = () => {
+      const 선택 = 강조할제목(
+        제목들,
+        window.scrollY,
+        120,
+        document.documentElement.scrollHeight,
+        document.documentElement.clientHeight
+      );
+      for (const [id, arr] of byId) {
+        for (const a of arr) a.classList.toggle('is-active', id === 선택);
+      }
+    };
+
+    /* 스크롤 중에는 좌표를 다시 재지 않는다 (레이아웃 강제 계산 비용) */
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        paint();
+        ticking = false;
+      });
+    };
+
+    좌표재측정();
+    paint();
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', () => {
+      좌표재측정();
+      paint();
+    });
+    document.fonts?.ready.then(() => {
+      좌표재측정();
+      paint();
+    });
+  }
+</script>
