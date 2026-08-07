@@ -103,6 +103,18 @@ function 프런트매터(src, rel, 오류) {
     if (!kv) continue;
     const [, key, raw] = kv;
     const v = raw.trim();
+    /* 따옴표로 시작하는 값은 YAML 이 그 따옴표 쌍까지만 값으로 읽는다.
+       lead: "돌아간다"와 "맞다"는 … 처럼 뒤에 글이 더 있으면 Astro 빌드가
+       "bad indentation of a mapping entry" 로 죽는다. 5단계까지 가서야
+       알아채면 원인을 짚기 어려우므로 여기서 먼저 잡는다. */
+    const q = v[0];
+    if ((q === '"' || q === "'") && !(v.length > 1 && v.endsWith(q) && v.indexOf(q, 1) === v.length - 1)) {
+      오류.push(
+        `${rel}: 프런트매터 ${key} 가 따옴표로 시작하는데 그 따옴표로 끝나지 않는다 — YAML 이 깨진다.\n` +
+          `        값 전체를 따옴표로 감싸거나, 「 」 같은 다른 인용부호를 쓴다.\n` +
+          `        ${key}: ${v.slice(0, 60)}${v.length > 60 ? '…' : ''}`
+      );
+    }
     if (/^\[.*\]$/.test(v)) {
       const 안 = v.slice(1, -1).trim();
       fm[key] = 안

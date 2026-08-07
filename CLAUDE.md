@@ -73,7 +73,7 @@
 ├─ content/
 │  ├─ curriculum.json               ★ 실제 프로젝트 데이터 (성취기준·단원·차시·출판사 매핑)
 │  ├─ curriculum.example.json       스키마 사용 예시 — 「인공지능 기초」 실데이터. 배포물 아님
-│  └─ units/{NN}/{NN}.mdx           차시 본문 (1단원 10개 완료 — status: review)
+│  └─ units/{NN}/{NN}.mdx           차시 본문 (1·3단원 19개 완료 — status: review)
 │
 ├─ tools/                           검증 스크립트 (전부 의존성 없음)
 │  ├─ validate-curriculum.mjs       교육과정 데이터 검증
@@ -362,6 +362,9 @@ npm run build
 - `<QuizItem std="…">`이 없는 코드이거나 그 차시가 담당하지 않는 성취기준
 - `status: published`인데 `todo`나 `[확인필요]`가 남음
 - 해요체·구어체 종결 (경고. 인용문에서 걸릴 수 있어 사람이 판단한다)
+- **프런트매터 값이 따옴표로 시작하는데 그 따옴표로 끝나지 않는 경우**
+
+마지막 항목은 2026-08-07에 실제로 겪은 뒤 추가했다. `lead: "돌아간다"와 "맞다"는 다르다…` 처럼 적으면 YAML이 `"돌아간다"` 까지만 값으로 읽고 나머지에서 깨진다. Astro가 5단계에서 `bad indentation of a mapping entry` 로 죽는데 원인을 짚기 어렵다. **본문에서 큰따옴표로 문장을 시작해야 하면 `「 」` 를 쓴다.**
 
 본문 하나만 빠르게 검사:
 
