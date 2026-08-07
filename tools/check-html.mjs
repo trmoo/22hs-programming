@@ -11,6 +11,9 @@
  *   4. lang 속성·title·h1 누락
  *   5. alt 없는 img
  *   6. JS 없이 읽히는가 — 좌측 트리/본문이 정적 HTML에 들어 있는가
+ *   7. 화면에 실은 예제 코드가 MDX 원문과 글자 단위로 같은가
+ *      — check:examples 는 MDX 원문을 실행한다. 화면 쪽이 조금이라도 다르면
+ *        「실행해 확인한 코드」를 실은 것이 아니다 (CLAUDE.md 6장 10번)
  *
  * 브라우저를 띄우지 않고 검사하므로 CI·학교 PC에서도 돌아간다.
  */
@@ -132,6 +135,67 @@ for (const file of files) {
   /* 6. JS 없이 읽히는가 */
   if (!/class="tree__lessons"/.test(html)) 오류.push(`${rel}: 정적 HTML에 좌측 트리 차시 목록이 없다`);
   if (!/class="skip-link"/.test(html)) 경고.push(`${rel}: 건너뛰기 링크가 없다`);
+
+  /* 7. 화면 코드 ↔ MDX 원문 */
+  예제코드대조(rel, html);
+}
+
+/* ---------- 7. 화면에 실은 예제 코드가 MDX 원문과 같은가 ---------- */
+/**
+ * MDX 는 여러 줄 표현식의 둘째 줄부터 들여쓰기를 2칸 지운다. 그래서 4칸으로 적은
+ * 파이썬 블록이 화면에서는 2칸이 되어 **검증한 코드와 실은 코드가 달라졌던 적이 있다**
+ * (2026-08-07). CodeSample.astro 가 되돌리고 있고, 되돌리기가 어긋나면 여기서 잡는다.
+ */
+function 실체되돌리기(s) {
+  return s
+    .replace(/<[^>]+>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#34;/g, '"')
+    .replace(/&amp;/g, '&');
+}
+
+/** dist 경로('units/02/18/index.html')에서 MDX 경로를 얻는다 */
+function MDX경로(rel) {
+  const m = /units[\\/](\d\d)[\\/](\d\d)[\\/]index\.html$/.exec(rel);
+  return m ? join('content', 'units', m[1], `${m[2]}.mdx`) : null;
+}
+
+function 예제코드대조(rel, html) {
+  const mdx = MDX경로(rel);
+  if (!mdx || !existsSync(mdx)) return;
+
+  const 원문들 = [
+    ...readFileSync(mdx, 'utf8').matchAll(
+      /<CodeSample\b[\s\S]*?>\s*\{`([\s\S]*?)`\}\s*<\/CodeSample>/g
+    ),
+    /* MDX 파일은 CRLF 다. 산출물은 LF 이므로 줄 끝을 맞춘 뒤 대조한다. */
+  ].map((m) => m[1].replace(/\r\n/g, '\n').replace(/\\\\/g, '\\').replace(/\\`/g, '`').trim());
+
+  const 화면들 = [
+    ...html.matchAll(/<pre class="code-sample__code[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/g),
+  ].map((m) => 실체되돌리기(m[1]).trim());
+
+  if (원문들.length !== 화면들.length) {
+    오류.push(
+      `${rel}: 예제 개수가 다르다 — MDX ${원문들.length}개, 화면 ${화면들.length}개`
+    );
+    return;
+  }
+
+  for (let i = 0; i < 원문들.length; i++) {
+    if (원문들[i] === 화면들[i]) continue;
+    const 원 = 원문들[i].split('\n');
+    const 화 = 화면들[i].split('\n');
+    const j = 원.findIndex((l, k) => l !== 화[k]);
+    오류.push(
+      `${rel}: ${i + 1}번째 예제가 MDX 원문과 다르다 (${j + 1}번째 줄)\n` +
+        `          MDX  ${JSON.stringify(원[j])}\n` +
+        `          화면 ${JSON.stringify(화[j])}`
+    );
+  }
 }
 
 /* ---------- 출력 ---------- */
