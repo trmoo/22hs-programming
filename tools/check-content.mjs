@@ -13,7 +13,7 @@
      3. title 이 curriculum.json 의 차시명과 같은가
      4. standards 가 담당성취기준과 같은가 (순서까지)
      5. langs 가 curriculum.json 의 언어와 같은가
-     6. 본문의 <QuizItem std="…"> 가 그 차시의 담당 성취기준 안에 있는가
+     6. 본문의 <QuizItem std="…"> 가 그 차시의 관련 성취기준 안에 있는가
      7. status: published 인데 todo 나 [확인필요] 가 남아 있지 않은가
      8. 본문에 [확인필요] 가 몇 건 남았는가
      9. 문체 규칙(해요체 금지)에 어긋난 표현이 있는가 — 경고
@@ -218,7 +218,7 @@ for (const p of 파일들) {
       오류.push(`${rel}: 문항의 std="${코드}" 가 curriculum.json 에 없는 코드다`);
     } else if (!담당.has(코드)) {
       오류.push(
-        `${rel}: 문항의 std="${코드}" 가 이 차시의 담당 성취기준(${차시.담당성취기준.join(', ')})이 아니다`
+        `${rel}: 문항의 std="${코드}" 가 이 차시의 관련 성취기준(${차시.담당성취기준.join(', ')})이 아니다`
       );
     }
   }
