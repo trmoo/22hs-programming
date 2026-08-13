@@ -66,7 +66,7 @@ const 교과서위치 = 출판사목록
    없으면 골격 섹션 목차를 그대로 쓴다. */
 const 목차 = [
   { id: 'objectives', text: '학습 목표', depth: 2 as const },
-  { id: 'standards', text: '담당 성취기준', depth: 2 as const },
+  { id: 'standards', text: '관련 성취기준', depth: 2 as const },
   ...(본문제목들.length
     ? 본문제목들
     : [{ id: 'body', text: '본문', depth: 2 as const }]),
@@ -117,7 +117,7 @@ const 목차 = [
     </ul>
 
     <h2 id="standards">
-      담당 성취기준<a class="heading-anchor" href="#standards" aria-hidden="true">#</a>
+      관련 성취기준<a class="heading-anchor" href="#standards" aria-hidden="true">#</a>
     </h2>
     <ul class="card-list">
       {
