@@ -4,6 +4,10 @@ dist/
 .astro/
 .vite/
 
+# 인쇄용 교재 산출물 (npm run textbook) — 명령 한 줄로 다시 만들어진다.
+# 학습지·교재 문서는 저장소에 넣지 않는다 (CLAUDE.md 6장 2번의 취지)
+textbook/
+
 # 교과서 PDF·스캔 이미지 — 저장소·배포물에 넣지 않는다 (CLAUDE.md 6장 2번)
 *.pdf
 *.PDF
