@@ -9,6 +9,14 @@ const 목차 = [
   { id: 'standards', text: '성취기준 한눈에', depth: 2 as const },
   { id: 'about', text: '이 교과서에 대하여', depth: 2 as const },
 ];
+
+/* 집필 진행 상황은 데이터에서 센다.
+   손으로 적어 두었더니 2단원을 마친 뒤에도 「2단원을 집필하고 있다」가 남아
+   화면이 사실과 어긋났다(2026-08-08). 다시 낡지 않게 상태를 세어 쓴다. */
+const 차시전체 = 단원목록.flatMap((u) => u.차시);
+const 검토중 = 차시전체.filter((l) => l.상태 === 'review').length;
+const 확정 = 차시전체.filter((l) => l.상태 === 'published').length;
+const 집필중 = 차시전체.filter((l) => l.상태 === 'draft').length;
 ---
 
 <BaseLayout
@@ -127,13 +135,29 @@ const 목차 = [
       </p>
     </div>
 
-    <div class="box box--draft">
-      <span class="box__label">집필 진행 상황</span>
-      <p>
-        단원·차시 구조와 성취기준 매핑은 완성됐다. 본문은 <strong>1단원과 3단원이 끝났고</strong>
-        2단원을 집필하고 있다. 아직 본문이 없는 차시도 학습 목표·핵심 개념·교과서 대조
-        정보는 볼 수 있다.
-      </p>
-    </div>
+    {
+      집필중 + 검토중 > 0 && (
+        <div class="box box--draft">
+          <span class="box__label">집필 진행 상황</span>
+          <p>
+            {집필중 > 0 ? (
+              <>
+                <strong>
+                  {총차시수}차시 가운데 {총차시수 - 집필중}차시
+                </strong>
+                의 본문이 집필됐다. 아직 본문이 없는 차시도 학습 목표·핵심 개념·교과서 대조 정보는
+                볼 수 있다.
+              </>
+            ) : (
+              <>
+                <strong>{총차시수}차시 본문이 모두 집필됐다.</strong> 다만 {검토중}차시는 아직
+                <strong> 교사 검토를 거치지 않았다.</strong> 자동 검사는 전부 통과했지만 설명이
+                어색한 곳이나 오탈자가 남아 있을 수 있다.
+              </>
+            )}
+          </p>
+        </div>
+      )
+    }
   </div>
 </BaseLayout>
