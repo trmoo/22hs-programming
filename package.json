@@ -24,10 +24,14 @@
     "check:all": "node tools/validate-curriculum.mjs content/curriculum.json content/curriculum.example.json",
     "check:todo": "node tools/validate-curriculum.mjs content/curriculum.json --todo-only && node tools/check-content.mjs --todo-only",
     "check:toc": "node tools/test-toc.mjs",
-    "check:html": "node tools/check-html.mjs"
+    "check:html": "node tools/check-html.mjs",
+    "textbook": "node tools/make-textbook.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^7.0.5",
     "astro": "^7.1.6"
+  },
+  "devDependencies": {
+    "docx": "^9.7.1"
   }
 }
