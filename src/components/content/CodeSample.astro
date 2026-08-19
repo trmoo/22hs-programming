@@ -137,7 +137,9 @@ const 실행가능 = 브라우저실행 && !norun;
     )
   }
 
-  <div class="code-sample__io">
+  {/* data-expect-panel — 바로 앞에 <Predict> 가 있으면 이 칸을 가린다.
+      예상해 보라고 해 놓고 답이 아래에 그대로 보이면 물음이 뜻을 잃는다. */}
+  <div class="code-sample__io" data-expect-panel>
     <span class="code-sample__io-label">
       {브라우저실행 ? '확인된 실행 결과' : '실행 결과'}
     </span>
@@ -277,6 +279,29 @@ const 실행가능 = 브라우저실행 && !norun;
   .code-sample__io-body--empty {
     color: #5b6d8a;
     font-style: normal;
+  }
+
+  /* 앞에 <Predict> 가 있을 때 결과를 가려 둔다. 예상을 적고 [확인] 을 누르면 열린다.
+     JS 가 없으면 이 표시가 붙지 않으므로 결과가 그대로 보인다 — 읽기에는 지장이 없다. */
+  .code-sample__io[data-covered] {
+    position: relative;
+    cursor: pointer;
+  }
+  .code-sample__io[data-covered] .code-sample__io-body {
+    filter: blur(7px);
+    user-select: none;
+    opacity: 0.55;
+  }
+  .code-sample__io[data-covered]::after {
+    content: '예상을 적고 [확인] 을 누르면 열린다  ·  눌러서 바로 보기';
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #cfe0f5;
+    background: rgba(10, 17, 32, 0.35);
   }
   .code-sample__norun {
     margin: 0;

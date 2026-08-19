@@ -643,10 +643,8 @@ function 컴포넌트그리기(b, 상태, 그림들, 깊이) {
         라벨줄('예상해 보기', 박스색.활동.라벨),
         new Paragraph({ children: 인라인(b.속성.question ?? '', { 크기: 20, 굵게: true }), spacing: { before: 0, after: 100 } }),
         줄노트(2),
-        new Paragraph({
-          children: [new TextRun({ text: `실제 결과 — ${String(b.속성.answer ?? '').replace(/\n/g, ' / ')}`, size: 16, color: 색.흐림, font: 글꼴.본문 })],
-          spacing: { before: 80, after: 0 },
-        }),
+        /* 실제 결과는 적지 않는다 — 바로 아래 예제의 「실행 결과」에 이미 나온다.
+           두 번 적으면 예상해 보라는 물음이 뜻을 잃는다. */
       ], { 배경: 박스색.활동.배경, 선: 박스색.활동.선 }));
       out.push(빈줄(150));
       break;

@@ -201,9 +201,33 @@ const 여러줄인가 = 여러줄 || 답줄수 > 1;
     const 대비책 = 상자.querySelector('.predict__fallback');
     if (대비책) 대비책.hidden = true;
 
+    /* 바로 뒤에 붙은 예제의 「확인된 실행 결과」를 가린다.
+       예상을 물어 놓고 답이 아래에 그대로 보이면 물음이 뜻을 잃는다.
+
+       ⚠️ Astro 가 컴포넌트 사이에 <script> 를 끼워 넣는다. 그것을 만나 멈추면
+          예제에 닿지 못하므로(처음에 그렇게 만들어 아무것도 안 가려졌다)
+          script·style 은 건너뛴다. 언어별 예제가 잇달아 오므로 계속 훑는다. */
+    const 가린것 = [];
+    for (let 다음 = 상자.nextElementSibling; 다음; 다음 = 다음.nextElementSibling) {
+      const 태그 = 다음.tagName;
+      if (태그 === 'SCRIPT' || 태그 === 'STYLE') continue;
+      if (!다음.classList.contains('code-sample')) break;
+      const 칸막이 = 다음.querySelector('[data-expect-panel]');
+      if (!칸막이) continue;
+      칸막이.dataset.covered = '';
+      가린것.push(칸막이);
+    }
+
+    const 펼치기 = () => {
+      for (const p of 가린것) delete p.dataset.covered;
+    };
+    /* 가림막을 눌러도 열리게 한다 — 예상을 건너뛰고 싶은 학생을 막아 세우지는 않는다 */
+    for (const p of 가린것) p.addEventListener('click', 펼치기);
+
     상자.querySelector('[data-check]')?.addEventListener('click', () => {
       const 쓴것 = 다듬기(칸?.value ?? '');
       if (결과) 결과.hidden = false;
+      펼치기();
       if (!판정) return;
       if (!쓴것) {
         판정.textContent = '먼저 예상을 적어 보자';
