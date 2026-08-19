@@ -115,6 +115,11 @@ const 공백 = String.fromCharCode(160);
 const 줄바꿈 = String.fromCharCode(10);
 const 동그라미 = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
 const 번호글 = (n) => (n <= 20 ? 동그라미[n - 1] : `(${n})`);
+/* 본문에 손으로 넣은 <Cloze> 의 빈칸 표시.
+   자동으로 고른 핵심 용어 빈칸이 ①②③ 을 쓰므로 여기서는 (가)(나)(다) 를 쓴다 —
+   한 차시에 두 가지가 함께 나오는데 번호가 같으면 어느 정답인지 알 수 없다. */
+const 가나다 = '가나다라마바사아자차카타파하';
+const 글자표 = (n) => (n <= 가나다.length ? `(${가나다[n - 1]})` : `(${n})`);
 
 /** 차시 하나를 그리는 동안 유지되는 상태 */
 class 차시상태 {
@@ -587,6 +592,111 @@ function 컴포넌트그리기(b, 상태, 그림들, 깊이) {
       out.push(빈줄(160));
       break;
     }
+    /* ── 웹의 상호작용 요소들. 종이에서는 「직접 적는 칸」으로 바꿔 싣는다.
+          여기를 빠뜨리면 교재에서 그 내용이 통째로 사라지므로 반드시 다룬다. ── */
+    case 'Cloze': {
+      const 조각 = [];
+      let 남음 = String(b.속성.text ?? '');
+      let 번 = 0;
+      const 정답 = [];
+      const re = /\[\[(.+?)\]\]/g;
+      let mm, 끝 = 0;
+      while ((mm = re.exec(남음)) !== null) {
+        if (mm.index > 끝) 조각.push({ 글: 남음.slice(끝, mm.index) });
+        const [앞] = mm[1].split('::');
+        const 답 = 앞.split('|')[0].trim();
+        번 += 1;
+        정답.push(답);
+        조각.push({ 빈칸: 번, 길이: 답.length });
+        끝 = mm.index + mm[0].length;
+      }
+      if (끝 < 남음.length) 조각.push({ 글: 남음.slice(끝) });
+
+      const 줄 = [];
+      for (const p of 조각) {
+        if (p.빈칸) {
+          줄.push(new TextRun({ text: 글자표(p.빈칸), font: 글꼴.본문, size: 20, color: 색.빈칸, bold: true }));
+          줄.push(new TextRun({
+            text: 공백.repeat(Math.max(12, Math.min(26, p.길이 * 3 + 4))),
+            font: 글꼴.본문, size: 20, underline: { type: 'single', color: 색.빈칸 },
+          }));
+        } else {
+          줄.push(...인라인(p.글, { 크기: 20 }));
+        }
+      }
+      out.push(상자([
+        라벨줄(`빈칸 채우기${b.속성.title ? ` · ${b.속성.title}` : ''}`, 박스색.tip.라벨),
+        new Paragraph({ children: 줄, spacing: { before: 40, after: 60, line: 340 } }),
+        new Paragraph({
+          children: [new TextRun({
+            text: `정답 — ${정답.map((t, i) => `${글자표(i + 1)} ${t}`).join('   ')}`,
+            size: 16, color: 색.흐림, font: 글꼴.본문,
+          })],
+          spacing: { before: 60, after: 0 },
+        }),
+      ], { 배경: 박스색.tip.배경, 선: 박스색.tip.선 }));
+      out.push(빈줄(150));
+      break;
+    }
+    case 'Predict': {
+      out.push(상자([
+        라벨줄('예상해 보기', 박스색.활동.라벨),
+        new Paragraph({ children: 인라인(b.속성.question ?? '', { 크기: 20, 굵게: true }), spacing: { before: 0, after: 100 } }),
+        줄노트(2),
+        new Paragraph({
+          children: [new TextRun({ text: `실제 결과 — ${String(b.속성.answer ?? '').replace(/\n/g, ' / ')}`, size: 16, color: 색.흐림, font: 글꼴.본문 })],
+          spacing: { before: 80, after: 0 },
+        }),
+      ], { 배경: 박스색.활동.배경, 선: 박스색.활동.선 }));
+      out.push(빈줄(150));
+      break;
+    }
+    case 'Sorter': {
+      const 것들 = b.속성.items ?? [];
+      out.push(상자([
+        라벨줄(`순서 맞추기${b.속성.title ? ` · ${b.속성.title}` : ''}`, 박스색.info.라벨),
+        new Paragraph({
+          children: [new TextRun({ text: '아래를 순서대로 다시 늘어놓아 보자 (가나다 순으로 섞어 두었다).', size: 17, color: 색.흐림, font: 글꼴.본문 })],
+          spacing: { before: 0, after: 100 },
+        }),
+        /* 종이에서는 정답 순서를 그대로 보이면 안 되므로 가나다 순으로 섞는다 */
+        new Paragraph({
+          children: 인라인([...것들].sort((a, b2) => String(a).localeCompare(String(b2), 'ko')).join('  ·  '), { 크기: 19 }),
+          spacing: { before: 0, after: 120 },
+        }),
+        줄노트(것들.length),
+        ...(b.속성.explain
+          ? [new Paragraph({ children: [new TextRun({ text: b.속성.explain, size: 16, color: 색.흐림, font: 글꼴.본문 })], spacing: { before: 80 } })]
+          : []),
+      ], { 배경: 박스색.info.배경, 선: 박스색.info.선 }));
+      out.push(빈줄(150));
+      break;
+    }
+    case 'Bucket': {
+      const 통 = b.속성.buckets ?? [];
+      const 것들 = b.속성.items ?? [];
+      out.push(new Paragraph({
+        children: [new TextRun({ text: `분류하기${b.속성.title ? ` — ${b.속성.title}` : ''}`, size: 18, bold: true, color: 박스색.info.라벨, font: 글꼴.본문 })],
+        spacing: { before: 200, after: 70 }, keepNext: true,
+      }));
+      out.push(new Paragraph({
+        children: [new TextRun({ text: `보기를 알맞은 갈래에 적어 보자 — ${통.join(' · ')}`, size: 17, color: 색.흐림, font: 글꼴.본문 })],
+        spacing: { before: 0, after: 90 }, keepNext: true,
+      }));
+      out.push(표만들기(
+        ['보기', '어느 갈래인가'],
+        것들.map((it) => [String(it.글 ?? ''), '']),
+        { 비율: [3, 2], 인라인: {} }
+      ));
+      out.push(new Paragraph({
+        children: [new TextRun({
+          text: `정답 — ${것들.map((it) => `${String(it.글 ?? '').replace(/<[^>]+>/g, '')}: ${it.통}`).join(' / ')}`,
+          size: 16, color: 색.흐림, font: 글꼴.본문,
+        })],
+        spacing: { before: 70, after: 160 },
+      }));
+      break;
+    }
     case 'CodeTask': {
       const 자식 = [
         라벨줄(`코드 작성 실습 · ${b.속성.lang === 'c' ? 'C' : 'Python'}`, 박스색.활동.라벨),
@@ -668,6 +778,11 @@ function 컴포넌트그리기(b, 상태, 그림들, 깊이) {
       out.push(빈줄(120));
       break;
     }
+    default:
+      /* 웹에 새 컴포넌트를 넣고 여기를 잊으면 그 내용이 교재에서 조용히 사라진다.
+         그래서 모르는 것은 소리 내어 알린다. */
+      console.log(`  경고 교재 생성기가 모르는 컴포넌트다 — <${b.이름}> (이 자리는 비워 둔다)`);
+      break;
   }
   return out;
 }

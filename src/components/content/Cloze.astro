@@ -1,0 +1,327 @@
+---
+/**
+ * 빈칸 채우기
+ *
+ * 개념을 다 적어 주는 대신 핵심 낱말을 학생이 직접 채우게 한다.
+ *
+ * MDX 사용법
+ *   <Cloze text="컴퓨터가 이해하는 것은 [[기계어]]뿐이다." />
+ *   <Cloze title="정리해 보자" text="… [[고급 언어|하이레벨 언어::사람 말에 가까운 쪽]] …" />
+ *
+ *   [[정답]]                  정답 하나
+ *   [[정답|허용답1|허용답2]]   다르게 적어도 맞다고 볼 말들
+ *   [[정답::힌트]]            물음표 단추를 누르면 힌트가 보인다
+ *
+ * ⚠️ JS 가 없어도 본문이 읽혀야 한다(CLAUDE.md 6장 9번). 그래서 아래에
+ *    「정답 보기」를 <details> 로 둔다 — 자바스크립트 없이도 열린다.
+ *    부정행위 방지 장치가 아니라 학습 장치다(<CodeTask> 와 같은 태도).
+ */
+interface Props {
+  /** 빈칸 표시가 든 문장. 여러 문장을 한 번에 넣어도 된다 */
+  text: string;
+  title?: string;
+}
+const { text, title } = Astro.props;
+
+/** "정답|허용1::힌트" → { 정답, 허용, 힌트 } */
+function 빈칸해석(안쪽: string) {
+  const [앞, 힌트] = 안쪽.split('::');
+  const 답들 = 앞.split('|').map((s) => s.trim()).filter(Boolean);
+  return { 정답: 답들[0] ?? '', 허용: 답들, 힌트: 힌트?.trim() };
+}
+
+type 빈칸 = { 빈칸: ReturnType<typeof 빈칸해석>; 번호: number };
+type 조각 = { 글자: string } | 빈칸;
+
+/* 글과 빈칸을 번갈아 늘어놓는다 */
+const 조각들: 조각[] = [];
+let 번호 = 0;
+let 끝 = 0;
+const re = /\[\[(.+?)\]\]/g;
+let m: RegExpExecArray | null;
+while ((m = re.exec(text)) !== null) {
+  if (m.index > 끝) 조각들.push({ 글자: text.slice(끝, m.index) });
+  조각들.push({ 빈칸: 빈칸해석(m[1]), 번호: ++번호 });
+  끝 = m.index + m[0].length;
+}
+if (끝 < text.length) 조각들.push({ 글자: text.slice(끝) });
+
+if (번호 === 0) {
+  throw new Error(`Cloze: 빈칸([[…]])이 하나도 없다 — "${text.slice(0, 40)}"`);
+}
+
+const 정답목록 = 조각들.filter((x): x is 빈칸 => '빈칸' in x);
+---
+
+<div class="cloze" data-cloze>
+  <div class="cloze__head">
+    <span class="cloze__label">빈칸 채우기</span>
+    {title && <span class="cloze__title">{title}</span>}
+    <span class="cloze__score" data-score aria-live="polite"></span>
+  </div>
+
+  <p class="cloze__text">
+    {
+      조각들.map((x) =>
+        '글자' in x ? (
+          <span set:html={x.글자} />
+        ) : (
+          <span class="cloze__slot">
+            <span class="cloze__no">{x.번호}</span>
+            <input
+              class="cloze__input"
+              type="text"
+              data-blank
+              data-answers={x.빈칸.허용.join('|')}
+              size={Math.max(5, Math.min(18, x.빈칸.정답.length + 3))}
+              autocomplete="off"
+              spellcheck="false"
+              aria-label={`${x.번호}번 빈칸`}
+            />
+            {x.빈칸.힌트 && (
+              <button class="cloze__hint-btn" type="button" data-hint={x.빈칸.힌트} aria-label={`${x.번호}번 힌트`}>
+                ?
+              </button>
+            )}
+          </span>
+        )
+      )
+    }
+  </p>
+
+  <p class="cloze__hint" data-hint-box hidden></p>
+
+  <div class="cloze__actions">
+    <button class="cloze__check" type="button" data-check>확인</button>
+    <button class="cloze__reset" type="button" data-reset>다시 풀기</button>
+  </div>
+
+  <details class="cloze__reveal">
+    <summary>정답 보기</summary>
+    <ol>
+      {정답목록.map((x) => <li>{x.빈칸.정답}</li>)}
+    </ol>
+  </details>
+</div>
+
+<style>
+  .cloze {
+    margin: var(--space-5) 0;
+    padding: var(--space-4) var(--space-5);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-left: 4px solid var(--c-accent);
+    border-radius: var(--radius-sm);
+  }
+  .cloze__head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-3);
+  }
+  .cloze__label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--c-accent);
+  }
+  .cloze__title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--c-text-soft);
+  }
+  .cloze__score {
+    margin-left: auto;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--c-text-soft);
+  }
+  .cloze__text {
+    margin: 0;
+    line-height: 2.5;
+  }
+  .cloze__slot {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+  }
+  .cloze__no {
+    display: inline-grid;
+    place-items: center;
+    width: 1.15em;
+    height: 1.15em;
+    font-size: 0.72em;
+    font-weight: 700;
+    color: #fff;
+    background: var(--c-accent);
+    border-radius: 50%;
+  }
+  .cloze__input {
+    font: inherit;
+    font-size: 0.95em;
+    padding: 1px 6px;
+    color: var(--c-text);
+    background: var(--c-surface-2);
+    border: 0;
+    border-bottom: 2px solid var(--c-border-strong);
+    border-radius: 4px 4px 0 0;
+    text-align: center;
+  }
+  .cloze__input:focus {
+    outline: 2px solid var(--c-primary-soft);
+    border-bottom-color: var(--c-primary);
+  }
+  .cloze__input[data-state='ok'] {
+    color: #14532d;
+    background: #dcfce7;
+    border-bottom-color: #16a34a;
+    font-weight: 700;
+  }
+  .cloze__input[data-state='no'] {
+    color: #7f1d1d;
+    background: #fee2e2;
+    border-bottom-color: #dc2626;
+  }
+  .cloze__hint-btn {
+    width: 1.35em;
+    height: 1.35em;
+    padding: 0;
+    font-size: 0.75em;
+    font-weight: 700;
+    color: var(--c-text-faint);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border-strong);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .cloze__hint-btn:hover {
+    color: var(--c-primary);
+    border-color: var(--c-primary);
+  }
+  .cloze__hint {
+    margin: var(--space-3) 0 0;
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.88rem;
+    color: var(--c-text-soft);
+    background: var(--c-surface-2);
+    border-radius: var(--radius-sm);
+  }
+  .cloze__actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+  .cloze__check,
+  .cloze__reset {
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+  }
+  .cloze__check {
+    color: #fff;
+    background: var(--c-accent);
+    border: 1px solid var(--c-accent);
+  }
+  .cloze__reset {
+    color: var(--c-text-soft);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border-strong);
+  }
+  .cloze__reveal {
+    margin-top: var(--space-3);
+    font-size: 0.88rem;
+    color: var(--c-text-soft);
+  }
+  .cloze__reveal summary {
+    cursor: pointer;
+    color: var(--c-text-faint);
+  }
+  .cloze__reveal ol {
+    margin: var(--space-2) 0 0;
+    padding-left: 1.4em;
+  }
+  @media print {
+    .cloze__actions,
+    .cloze__hint-btn {
+      display: none;
+    }
+    .cloze__input {
+      background: none;
+      border-bottom: 1px solid #333;
+    }
+  }
+</style>
+
+<script>
+  /** 띄어쓰기·대소문자·따옴표를 무시하고 견준다 — 뜻이 같으면 맞은 것으로 본다 */
+  function 다듬기(s) {
+    return s
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/[()[\]{}'"`.,·]/g, '');
+  }
+
+  document.querySelectorAll('[data-cloze]').forEach((상자) => {
+    const 칸들 = [...상자.querySelectorAll('[data-blank]')];
+    const 점수 = 상자.querySelector('[data-score]');
+    const 힌트칸 = 상자.querySelector('[data-hint-box]');
+
+    const 채점 = () => {
+      let 맞은수 = 0;
+      for (const 칸 of 칸들) {
+        const 답들 = (칸.dataset.answers ?? '').split('|').map(다듬기);
+        const 쓴것 = 다듬기(칸.value);
+        if (!쓴것) {
+          delete 칸.dataset.state;
+          continue;
+        }
+        const 맞나 = 답들.includes(쓴것);
+        칸.dataset.state = 맞나 ? 'ok' : 'no';
+        if (맞나) 맞은수 += 1;
+      }
+      if (점수) {
+        점수.textContent = `${맞은수} / ${칸들.length}`;
+        점수.style.color = 맞은수 === 칸들.length ? '#16a34a' : '';
+      }
+    };
+
+    상자.querySelector('[data-check]')?.addEventListener('click', 채점);
+
+    상자.querySelector('[data-reset]')?.addEventListener('click', () => {
+      for (const 칸 of 칸들) {
+        칸.value = '';
+        delete 칸.dataset.state;
+      }
+      if (점수) {
+        점수.textContent = '';
+        점수.style.color = '';
+      }
+      if (힌트칸) 힌트칸.hidden = true;
+      칸들[0]?.focus();
+    });
+
+    /* 엔터로 다음 칸, 마지막 칸에서는 채점 */
+    칸들.forEach((칸, i) => {
+      칸.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        if (i < 칸들.length - 1) 칸들[i + 1].focus();
+        else 채점();
+      });
+      칸.addEventListener('input', () => delete 칸.dataset.state);
+    });
+
+    상자.querySelectorAll('[data-hint]').forEach((단추) => {
+      단추.addEventListener('click', () => {
+        if (!힌트칸) return;
+        힌트칸.textContent = `힌트 — ${단추.dataset.hint}`;
+        힌트칸.hidden = false;
+      });
+    });
+  });
+</script>

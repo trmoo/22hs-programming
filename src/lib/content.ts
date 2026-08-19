@@ -17,6 +17,10 @@ import Figure from '@components/content/Figure.astro';
 import Activity from '@components/content/Activity.astro';
 import LessonLink from '@components/content/LessonLink.astro';
 import CodeTask from '@components/content/CodeTask.astro';
+import Cloze from '@components/content/Cloze.astro';
+import Predict from '@components/content/Predict.astro';
+import Sorter from '@components/content/Sorter.astro';
+import Bucket from '@components/content/Bucket.astro';
 
 export const 본문컴포넌트 = {
   InfoBox,
@@ -31,6 +35,10 @@ export const 본문컴포넌트 = {
   Activity,
   LessonLink,
   CodeTask,
+  Cloze,
+  Predict,
+  Sorter,
+  Bucket,
 };
 
 export interface 목차항목 {

@@ -1,0 +1,256 @@
+---
+/**
+ * 순서 맞추기
+ *
+ * 단계가 있는 개념(개발 절차, 알고리즘의 흐름)은 읽는 것보다 직접 늘어놓아 보는 편이 남는다.
+ *
+ * MDX 사용법
+ *   <Sorter title="개발 절차를 순서대로 놓아 보자"
+ *           items={['요구 사항 분석', '설계', '구현', '테스트', '유지 보수']} />
+ *
+ * items 는 «올바른 순서»로 적는다. 화면에서는 자바스크립트가 섞어서 보여 준다.
+ * 끌어다 놓기(드래그) 대신 위·아래 단추를 쓴다 — 태블릿과 키보드에서 모두 된다.
+ *
+ * ⚠️ JS 가 없으면 섞이지 않으므로 올바른 순서가 그대로 보인다. 이때는 「읽는 자료」가 된다.
+ */
+interface Props {
+  items: string[];
+  title?: string;
+  /** 순서를 왜 그렇게 보아야 하는지 한 줄 설명 (확인 뒤에 보인다) */
+  explain?: string;
+}
+const { items, title, explain } = Astro.props;
+
+if (!Array.isArray(items) || items.length < 3) {
+  throw new Error(`Sorter: items 는 3개 이상이어야 한다 — ${JSON.stringify(items)}`);
+}
+---
+
+<div class="sorter" data-sorter>
+  <div class="sorter__head">
+    <span class="sorter__label">순서 맞추기</span>
+    {title && <span class="sorter__title">{title}</span>}
+    <span class="sorter__verdict" data-verdict aria-live="polite"></span>
+  </div>
+
+  <ol class="sorter__list" data-list>
+    {
+      items.map((it, i) => (
+        <li class="sorter__item" data-item data-order={i}>
+          <span class="sorter__pos" data-pos>{i + 1}</span>
+          <span class="sorter__text" set:html={it} />
+          <span class="sorter__btns">
+            <button type="button" data-up aria-label="위로">▲</button>
+            <button type="button" data-down aria-label="아래로">▼</button>
+          </span>
+        </li>
+      ))
+    }
+  </ol>
+
+  <div class="sorter__actions">
+    <button class="sorter__check" type="button" data-check>확인</button>
+    <button class="sorter__shuffle" type="button" data-shuffle>다시 섞기</button>
+  </div>
+
+  {explain && <p class="sorter__explain" data-explain hidden>{explain}</p>}
+</div>
+
+<style>
+  .sorter {
+    margin: var(--space-5) 0;
+    padding: var(--space-4) var(--space-5);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-left: 4px solid var(--c-primary);
+    border-radius: var(--radius-sm);
+  }
+  .sorter__head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-3);
+  }
+  .sorter__label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--c-primary);
+  }
+  .sorter__title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--c-text-soft);
+  }
+  .sorter__verdict {
+    margin-left: auto;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .sorter__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .sorter__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-sm);
+  }
+  .sorter__item[data-state='ok'] {
+    background: #dcfce7;
+    border-color: #16a34a;
+  }
+  .sorter__item[data-state='no'] {
+    background: #fee2e2;
+    border-color: #dc2626;
+  }
+  .sorter__pos {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 1.7em;
+    height: 1.7em;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #fff;
+    background: var(--c-primary);
+    border-radius: 50%;
+  }
+  .sorter__text {
+    flex: 1;
+  }
+  .sorter__btns {
+    display: flex;
+    gap: 4px;
+    flex: none;
+  }
+  .sorter__btns button {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.7rem;
+    color: var(--c-text-soft);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border-strong);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+  .sorter__btns button:hover {
+    color: var(--c-primary);
+    border-color: var(--c-primary);
+  }
+  .sorter__actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+  .sorter__check,
+  .sorter__shuffle {
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+  }
+  .sorter__check {
+    color: #fff;
+    background: var(--c-primary);
+    border: 1px solid var(--c-primary);
+  }
+  .sorter__shuffle {
+    color: var(--c-text-soft);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border-strong);
+  }
+  .sorter__explain {
+    margin: var(--space-3) 0 0;
+    padding: var(--space-3);
+    font-size: 0.9rem;
+    color: var(--c-text-soft);
+    background: var(--c-primary-soft);
+    border-radius: var(--radius-sm);
+  }
+  @media print {
+    .sorter__actions,
+    .sorter__btns { display: none; }
+  }
+</style>
+
+<script>
+  document.querySelectorAll('[data-sorter]').forEach((상자) => {
+    const 목록 = 상자.querySelector('[data-list]');
+    const 판정 = 상자.querySelector('[data-verdict]');
+    const 설명 = 상자.querySelector('[data-explain]');
+    if (!목록) return;
+
+    const 번호다시 = () => {
+      [...목록.children].forEach((li, i) => {
+        const 자리 = li.querySelector('[data-pos]');
+        if (자리) 자리.textContent = String(i + 1);
+        delete li.dataset.state;
+      });
+      if (판정) 판정.textContent = '';
+      if (설명) 설명.hidden = true;
+    };
+
+    const 섞기 = () => {
+      const 것들 = [...목록.children];
+      /* 원래 순서와 같아지면 문제가 되지 않으므로 다를 때까지 섞는다 */
+      for (let 시도 = 0; 시도 < 12; 시도 += 1) {
+        for (let i = 것들.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [것들[i], 것들[j]] = [것들[j], 것들[i]];
+        }
+        if (것들.some((li, i) => Number(li.dataset.order) !== i)) break;
+      }
+      것들.forEach((li) => 목록.appendChild(li));
+      번호다시();
+    };
+
+    상자.querySelectorAll('[data-up]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const li = b.closest('[data-item]');
+        if (li?.previousElementSibling) {
+          목록.insertBefore(li, li.previousElementSibling);
+          번호다시();
+        }
+      })
+    );
+    상자.querySelectorAll('[data-down]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const li = b.closest('[data-item]');
+        if (li?.nextElementSibling) {
+          목록.insertBefore(li.nextElementSibling, li);
+          번호다시();
+        }
+      })
+    );
+
+    상자.querySelector('[data-check]')?.addEventListener('click', () => {
+      const 것들 = [...목록.children];
+      let 맞은수 = 0;
+      것들.forEach((li, i) => {
+        const 맞나 = Number(li.dataset.order) === i;
+        li.dataset.state = 맞나 ? 'ok' : 'no';
+        if (맞나) 맞은수 += 1;
+      });
+      const 다맞음 = 맞은수 === 것들.length;
+      if (판정) {
+        판정.textContent = 다맞음 ? '순서가 맞다' : `${맞은수} / ${것들.length} 자리`;
+        판정.style.color = 다맞음 ? '#16a34a' : '#b45309';
+      }
+      if (설명 && 다맞음) 설명.hidden = false;
+    });
+
+    상자.querySelector('[data-shuffle]')?.addEventListener('click', 섞기);
+    섞기();
+  });
+</script>
