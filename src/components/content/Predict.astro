@@ -1,0 +1,222 @@
+---
+/**
+ * 예상해 보기
+ *
+ * 예제를 보여 주기 «전에» 결과를 먼저 적게 한다. 예상이 틀린 학생이 가장 많이 배운다.
+ * 실행 단추를 누르기 전에 한 번 멈춰 세우는 것이 이 컴포넌트의 목적이다.
+ *
+ * MDX 사용법
+ *   <Predict question="이 코드를 실행하면 무엇이 찍힐까?" answer="프로그래밍을 시작한다" />
+ *   <Predict question="…" answer="3" hint="나누기가 아니라 몫이다" 여러줄 />
+ *
+ * ⚠️ 답을 글자 그대로 맞히는 것이 목적이 아니다. 확인을 누르면 견주어 보여 주되,
+ *    「달랐다」도 배움으로 다루는 문구를 쓴다.
+ */
+interface Props {
+  question: string;
+  /** 실제 결과. 여러 줄이면 그대로 줄바꿈해 적는다 */
+  answer: string;
+  hint?: string;
+  /** 여러 줄로 답하게 한다 */
+  여러줄?: boolean;
+}
+const { question, answer, hint, 여러줄 = false } = Astro.props;
+const 답줄수 = answer.split('\n').length;
+const 여러줄인가 = 여러줄 || 답줄수 > 1;
+---
+
+<div class="predict" data-predict>
+  <div class="predict__head">
+    <span class="predict__label">예상해 보기</span>
+    <span class="predict__verdict" data-verdict aria-live="polite"></span>
+  </div>
+
+  <p class="predict__q">{question}</p>
+
+  {
+    여러줄인가 ? (
+      <textarea
+        class="predict__input"
+        data-guess
+        rows={Math.min(6, 답줄수 + 1)}
+        spellcheck="false"
+        placeholder="여기에 예상한 결과를 적어 보자"
+      />
+    ) : (
+      <input
+        class="predict__input"
+        type="text"
+        data-guess
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="여기에 예상한 결과를 적어 보자"
+      />
+    )
+  }
+
+  {hint && <p class="predict__hint" data-hint-box hidden>힌트 — {hint}</p>}
+
+  <div class="predict__actions">
+    <button class="predict__check" type="button" data-check>확인</button>
+    {hint && <button class="predict__hint-btn" type="button" data-hint>힌트</button>}
+  </div>
+
+  <div class="predict__reveal" data-reveal hidden>
+    <span class="predict__reveal-label">실제 결과</span>
+    <pre class="predict__answer">{answer}</pre>
+  </div>
+
+  <details class="predict__fallback">
+    <summary>결과 바로 보기</summary>
+    <pre>{answer}</pre>
+  </details>
+</div>
+
+<style>
+  .predict {
+    margin: var(--space-5) 0;
+    padding: var(--space-4) var(--space-5);
+    background: #fbf7ef;
+    border: 1px solid #e6d7b8;
+    border-left: 4px solid #c98a1b;
+    border-radius: var(--radius-sm);
+  }
+  .predict__head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+  .predict__label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #92651a;
+  }
+  .predict__verdict {
+    margin-left: auto;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .predict__q {
+    margin: 0 0 var(--space-3);
+    font-weight: 600;
+  }
+  .predict__input {
+    display: block;
+    width: 100%;
+    font: inherit;
+    font-size: 0.95rem;
+    padding: 8px 10px;
+    color: var(--c-text);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border-strong);
+    border-radius: var(--radius-sm);
+    resize: vertical;
+  }
+  textarea.predict__input {
+    font-family: var(--font-mono);
+  }
+  .predict__input:focus {
+    outline: 2px solid #f0dcb4;
+    border-color: #c98a1b;
+  }
+  .predict__hint {
+    margin: var(--space-3) 0 0;
+    font-size: 0.88rem;
+    color: var(--c-text-soft);
+  }
+  .predict__actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+  }
+  .predict__check,
+  .predict__hint-btn {
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+  }
+  .predict__check {
+    color: #fff;
+    background: #c98a1b;
+    border: 1px solid #c98a1b;
+  }
+  .predict__hint-btn {
+    color: var(--c-text-soft);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border-strong);
+  }
+  .predict__reveal {
+    margin-top: var(--space-4);
+    padding-top: var(--space-3);
+    border-top: 1px dashed #e0cfa8;
+  }
+  .predict__reveal-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #92651a;
+  }
+  .predict__answer,
+  .predict__fallback pre {
+    margin: var(--space-2) 0 0;
+    padding: var(--space-3);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    color: var(--c-code-text);
+    background: var(--c-code-bg);
+    border-radius: var(--radius-sm);
+  }
+  .predict__fallback {
+    margin-top: var(--space-3);
+    font-size: 0.85rem;
+    color: var(--c-text-faint);
+  }
+  .predict__fallback summary {
+    cursor: pointer;
+  }
+  @media print {
+    .predict__actions,
+    .predict__reveal { display: none; }
+  }
+</style>
+
+<script>
+  function 다듬기(s) {
+    return s.replace(/\r/g, '').trim().replace(/[ \t]+/g, ' ').replace(/\n+/g, '\n');
+  }
+
+  document.querySelectorAll('[data-predict]').forEach((상자) => {
+    const 칸 = 상자.querySelector('[data-guess]');
+    const 판정 = 상자.querySelector('[data-verdict]');
+    const 결과 = 상자.querySelector('[data-reveal]');
+    const 힌트칸 = 상자.querySelector('[data-hint-box]');
+    const 정답 = 상자.querySelector('.predict__answer')?.textContent ?? '';
+
+    /* 스스로 적어 보게 하는 것이 목적이라, 자바스크립트가 붙으면
+       「결과 바로 보기」는 접어 둔다. 확인을 누르면 어차피 보인다. */
+    const 대비책 = 상자.querySelector('.predict__fallback');
+    if (대비책) 대비책.hidden = true;
+
+    상자.querySelector('[data-check]')?.addEventListener('click', () => {
+      const 쓴것 = 다듬기(칸?.value ?? '');
+      if (결과) 결과.hidden = false;
+      if (!판정) return;
+      if (!쓴것) {
+        판정.textContent = '먼저 예상을 적어 보자';
+        판정.style.color = 'var(--c-text-faint)';
+        return;
+      }
+      const 같나 = 다듬기(정답) === 쓴것;
+      판정.textContent = 같나 ? '예상과 같다' : '예상과 달랐다 — 왜 그런지 살펴보자';
+      판정.style.color = 같나 ? '#16a34a' : '#b45309';
+    });
+
+    상자.querySelector('[data-hint]')?.addEventListener('click', () => {
+      if (힌트칸) 힌트칸.hidden = false;
+    });
+  });
+</script>

@@ -261,7 +261,26 @@ for (const p of 파일들) {
     }
   }
 
-  /* 10. 문체 — 오류가 아니라 경고다. 인용문에서 걸릴 수 있어 사람이 판단한다 */
+  /* 10. <Predict> 가 예제 바로 앞에 있으면 그 예제의 기대 출력과 같아야 한다.
+     예제를 고치고 예상 답을 안 고치면 「실제로 실행해 확인한 값」과 어긋난 답을
+     학생에게 정답이라고 보여 주게 된다 (CLAUDE.md 6장 10번의 취지). */
+  for (const m of 본문.matchAll(
+    /<Predict\b([\s\S]*?)\/>\s*<CodeSample\b([^>]*?)>/g
+  )) {
+    const 답 = /answer=\{?"((?:[^"\\]|\\.)*)"\}?/.exec(m[1])?.[1];
+    const 기대 = /expect=\{?"((?:[^"\\]|\\.)*)"\}?/.exec(m[2])?.[1];
+    if (답 === undefined || 기대 === undefined) continue;
+    const 풀기 = (s) => s.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"').trim();
+    if (풀기(답) !== 풀기(기대)) {
+      오류.push(
+        `${rel}: <Predict> 의 answer 가 바로 뒤 <CodeSample> 의 expect 와 다르다\n` +
+          `        예상: ${JSON.stringify(풀기(답))}\n` +
+          `        예제: ${JSON.stringify(풀기(기대))}`
+      );
+    }
+  }
+
+  /* 11. 문체 — 오류가 아니라 경고다. 인용문에서 걸릴 수 있어 사람이 판단한다 */
   for (const { re, 이름 } of 문체금지) {
     const 걸린것 = [...본문.matchAll(re)].map((m) => m[0].trim());
     if (걸린것.length > 0) {

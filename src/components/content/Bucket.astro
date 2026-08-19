@@ -1,0 +1,314 @@
+---
+/**
+ * 분류하기
+ *
+ * 「저급 언어인가 고급 언어인가」처럼 갈래를 나누는 개념은 표로 읽는 것보다
+ * 카드를 직접 옮겨 보는 편이 남는다.
+ *
+ * MDX 사용법
+ *   <Bucket
+ *     title="어느 쪽 언어인가"
+ *     buckets={['저급 언어', '고급 언어']}
+ *     items={[
+ *       { 글: '기계어', 통: '저급 언어', 왜: '0과 1로 된 명령이다' },
+ *       { 글: 'Python', 통: '고급 언어' },
+ *     ]}
+ *   />
+ *
+ * 끌어다 놓기 대신 «카드를 고르고 통을 누르는» 방식이다 — 태블릿·키보드에서 모두 된다.
+ *
+ * ⚠️ JS 가 없으면 카드마다 정답 갈래가 글자로 보인다. 그때는 「분류표」로 읽힌다.
+ */
+interface 항목 {
+  글: string;
+  통: string;
+  /** 확인한 뒤 보여 줄 한 줄 근거 */
+  왜?: string;
+}
+interface Props {
+  buckets: string[];
+  items: 항목[];
+  title?: string;
+}
+const { buckets, items, title } = Astro.props;
+
+if (!Array.isArray(buckets) || buckets.length < 2) {
+  throw new Error(`Bucket: buckets 는 2개 이상이어야 한다 — ${JSON.stringify(buckets)}`);
+}
+for (const it of items) {
+  if (!buckets.includes(it.통)) {
+    throw new Error(`Bucket: "${it.글}" 의 통("${it.통}")이 buckets 에 없다`);
+  }
+}
+---
+
+<div class="bucket" data-bucket>
+  <div class="bucket__head">
+    <span class="bucket__label">분류하기</span>
+    {title && <span class="bucket__title">{title}</span>}
+    <span class="bucket__verdict" data-verdict aria-live="polite"></span>
+  </div>
+
+  <p class="bucket__how">카드를 누른 뒤, 넣을 통을 누른다. 통 안의 카드를 누르면 다시 나온다.</p>
+
+  <div class="bucket__pool" data-pool>
+    {
+      items.map((it, i) => (
+        <button class="bucket__card" type="button" data-card data-answer={it.통} data-idx={i}>
+          <span set:html={it.글} />
+          <span class="bucket__noscript-answer">{it.통}</span>
+        </button>
+      ))
+    }
+  </div>
+
+  <div class="bucket__bins">
+    {
+      buckets.map((b) => (
+        <section class="bucket__bin" data-bin={b}>
+          <h4 class="bucket__bin-name">{b}</h4>
+          <div class="bucket__bin-body" data-bin-body />
+        </section>
+      ))
+    }
+  </div>
+
+  <div class="bucket__actions">
+    <button class="bucket__check" type="button" data-check>확인</button>
+    <button class="bucket__reset" type="button" data-reset>다시</button>
+  </div>
+
+  <ul class="bucket__why" data-why hidden>
+    {items.filter((it) => it.왜).map((it) => (
+      <li><strong>{it.글}</strong> — {it.왜}</li>
+    ))}
+  </ul>
+</div>
+
+<style>
+  .bucket {
+    margin: var(--space-5) 0;
+    padding: var(--space-4) var(--space-5);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-left: 4px solid #7c3aed;
+    border-radius: var(--radius-sm);
+  }
+  .bucket__head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+  .bucket__label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #7c3aed;
+  }
+  .bucket__title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--c-text-soft);
+  }
+  .bucket__verdict {
+    margin-left: auto;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .bucket__how {
+    margin: var(--space-2) 0 var(--space-3);
+    font-size: 0.85rem;
+    color: var(--c-text-faint);
+  }
+  .bucket__pool {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    min-height: 2.6rem;
+    padding: var(--space-2);
+    background: var(--c-surface-2);
+    border: 1px dashed var(--c-border-strong);
+    border-radius: var(--radius-sm);
+  }
+  .bucket__card {
+    font: inherit;
+    font-size: 0.9rem;
+    padding: 6px 12px;
+    color: var(--c-text);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border-strong);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+  }
+  .bucket__card:hover {
+    border-color: #7c3aed;
+  }
+  .bucket__card[data-picked] {
+    color: #fff;
+    background: #7c3aed;
+    border-color: #7c3aed;
+  }
+  .bucket__card[data-state='ok'] {
+    background: #dcfce7;
+    border-color: #16a34a;
+  }
+  .bucket__card[data-state='no'] {
+    background: #fee2e2;
+    border-color: #dc2626;
+  }
+  /* 자바스크립트가 붙으면 정답 글자는 숨긴다 (아래 script 에서 켠다) */
+  .bucket__noscript-answer {
+    margin-left: 6px;
+    font-size: 0.78em;
+    color: var(--c-text-faint);
+  }
+  .bucket[data-js] .bucket__noscript-answer {
+    display: none;
+  }
+  .bucket__bins {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+  .bucket__bin {
+    padding: var(--space-3);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+  .bucket__bin:hover {
+    border-color: #7c3aed;
+  }
+  .bucket__bin-name {
+    margin: 0 0 var(--space-2);
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--c-text-soft);
+  }
+  .bucket__bin-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    min-height: 2.2rem;
+  }
+  .bucket__actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+  .bucket__check,
+  .bucket__reset {
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+  }
+  .bucket__check {
+    color: #fff;
+    background: #7c3aed;
+    border: 1px solid #7c3aed;
+  }
+  .bucket__reset {
+    color: var(--c-text-soft);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border-strong);
+  }
+  .bucket__why {
+    margin: var(--space-3) 0 0;
+    padding: var(--space-3) var(--space-3) var(--space-3) var(--space-6);
+    font-size: 0.88rem;
+    color: var(--c-text-soft);
+    background: #f5f3ff;
+    border-radius: var(--radius-sm);
+  }
+  @media print {
+    .bucket__actions,
+    .bucket__how { display: none; }
+    .bucket[data-js] .bucket__noscript-answer { display: inline; }
+  }
+</style>
+
+<script>
+  document.querySelectorAll('[data-bucket]').forEach((상자) => {
+    상자.dataset.js = '';                       /* 정답 글자를 숨기는 스위치 */
+    const 통들 = [...상자.querySelectorAll('[data-bin]')];
+    const 대기 = 상자.querySelector('[data-pool]');
+    const 판정 = 상자.querySelector('[data-verdict]');
+    const 근거 = 상자.querySelector('[data-why]');
+    let 고른카드 = null;
+
+    const 고르기 = (카드) => {
+      if (고른카드 === 카드) {
+        delete 고른카드.dataset.picked;
+        고른카드 = null;
+        return;
+      }
+      if (고른카드) delete 고른카드.dataset.picked;
+      고른카드 = 카드;
+      카드.dataset.picked = '';
+    };
+
+    상자.querySelectorAll('[data-card]').forEach((카드) => {
+      카드.addEventListener('click', () => {
+        delete 카드.dataset.state;
+        /* 통 안의 카드를 누르면 대기 자리로 되돌린다 */
+        if (카드.closest('[data-bin-body]')) {
+          대기?.appendChild(카드);
+          if (고른카드 === 카드) 고른카드 = null;
+          delete 카드.dataset.picked;
+          return;
+        }
+        고르기(카드);
+      });
+    });
+
+    통들.forEach((통) => {
+      통.addEventListener('click', (e) => {
+        if (e.target.closest('[data-card]')) return;     /* 카드 누름은 위에서 처리 */
+        if (!고른카드) return;
+        통.querySelector('[data-bin-body]')?.appendChild(고른카드);
+        delete 고른카드.dataset.picked;
+        고른카드 = null;
+      });
+    });
+
+    상자.querySelector('[data-check]')?.addEventListener('click', () => {
+      const 카드들 = [...상자.querySelectorAll('[data-card]')];
+      let 맞은수 = 0;
+      let 안넣음 = 0;
+      for (const 카드 of 카드들) {
+        const 담긴통 = 카드.closest('[data-bin]')?.dataset.bin;
+        if (!담긴통) {
+          안넣음 += 1;
+          delete 카드.dataset.state;
+          continue;
+        }
+        const 맞나 = 담긴통 === 카드.dataset.answer;
+        카드.dataset.state = 맞나 ? 'ok' : 'no';
+        if (맞나) 맞은수 += 1;
+      }
+      if (판정) {
+        판정.textContent = 안넣음
+          ? `아직 ${안넣음}장이 남았다`
+          : `${맞은수} / ${카드들.length}`;
+        판정.style.color = !안넣음 && 맞은수 === 카드들.length ? '#16a34a' : '#b45309';
+      }
+      if (근거 && !안넣음) 근거.hidden = false;
+    });
+
+    상자.querySelector('[data-reset]')?.addEventListener('click', () => {
+      상자.querySelectorAll('[data-card]').forEach((카드) => {
+        delete 카드.dataset.state;
+        delete 카드.dataset.picked;
+        대기?.appendChild(카드);
+      });
+      고른카드 = null;
+      if (판정) 판정.textContent = '';
+      if (근거) 근거.hidden = true;
+    });
+  });
+</script>
