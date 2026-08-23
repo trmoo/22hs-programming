@@ -20,7 +20,7 @@ import {
   Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, PageBreak,
   ImageRun, TableOfContents, VerticalAlign, Footer, PageNumber, NumberFormat,
 } from 'docx';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -585,6 +585,28 @@ function 컴포넌트그리기(b, 상태, 그림들, 깊이) {
         out.push(라벨줄('넣어 줄 입력', 색.흐림));
         out.push(코드상자(b.속성.stdin.replace(/\n$/, ''), { 배경: 'FFFDF3', 선색: 'E6D9B0' }));
       }
+      /* src 가 있으면 창을 찍은 그림을 결과로 싣는다 — GUI 예제는 표준 출력이 없다.
+         그림은 content/extra/shots/ 에 두고, 실제로 실행해 잡은 것만 쓴다. */
+      if (b.속성.src) {
+        const 그림경로 = join(REPO, 'content', 'extra', 'shots', String(b.속성.src));
+        out.push(빈줄(60));
+        out.push(라벨줄('실행하면 이런 창이 뜬다', 색.흐림));
+        if (existsSync(그림경로)) {
+          const 잰것 = png크기(그림경로);
+          const 폭 = Math.min(330, 잰것.폭);
+          out.push(new Paragraph({
+            children: [new ImageRun({
+              data: readFileSync(그림경로), type: 'png',
+              transformation: { width: Math.round(폭), height: Math.round((폭 * 잰것.높이) / 잰것.폭) },
+            })],
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 60, after: 170 },
+          }));
+        } else {
+          console.log(`  경고 창 그림이 없다 — ${b.속성.src}`);
+        }
+        break;
+      }
       out.push(빈줄(60));
       out.push(라벨줄(b.속성.norun ? '실행 결과 (아래 설명 참고)' : '실행 결과', 색.흐림));
       const 출력 = String(b.속성.expect ?? '').replace(/\n$/, '');
@@ -1111,6 +1133,42 @@ for (const u of 교육과정.단원) {
       빈칸: 상태.정답, 문항: 상태.문항,
     });
     자식들.push(new Paragraph({ children: [new PageBreak()] }));
+  }
+}
+
+/* ---------- 부록: 성취기준 차시가 아닌 심화 자료 ----------
+   content/extra/*.mdx 를 그대로 싣는다. 차시가 아니므로 curriculum.json 과
+   맞춰 보지 않고, 프런트매터의 title·lead 만 쓴다.
+   빈칸(<Cloze>)은 차시와 같은 방식으로 매기되 부록 1 정답표에는 넣지 않는다 —
+   부록 안에서 정답을 바로 옆에 적어 주므로 두 번 실을 까닭이 없다. */
+{
+  const 부록폴더 = join(REPO, 'content', 'extra');
+  const 부록파일 = existsSync(부록폴더)
+    ? readdirSync(부록폴더).filter((f) => f.endsWith('.mdx')).sort()
+    : [];
+
+  for (const f of 부록파일) {
+    const { fm, 블록 } = 차시읽기(join(부록폴더, f));
+    const 상태 = new 차시상태(new Set(), false);   /* 자동 빈칸은 쓰지 않는다 */
+
+    자식들.push(
+      빈줄(300),
+      new Paragraph({
+        children: [new TextRun({
+          text: fm.subtitle ?? '부록',
+          size: 20, bold: true, color: 색.포인트, font: 글꼴.본문, characterSpacing: 60,
+        })],
+        spacing: { after: 100 },
+      }),
+      new Paragraph({
+        heading: HeadingLevel.HEADING_1,
+        children: [new TextRun({ text: fm.title ?? f, size: 42, bold: true, color: 색.제목, font: 글꼴.본문 })],
+        spacing: { after: 140 },
+      }),
+      문단(fm.lead ?? '', { 아래: 260, 색상: 색.흐림 }),
+      ...블록그리기(블록, 상태, []),
+      new Paragraph({ children: [new PageBreak()] })
+    );
   }
 }
 
