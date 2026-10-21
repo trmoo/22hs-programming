@@ -4,7 +4,7 @@
 성취기준을 뼈대로 삼아 본문·예제·문항을 새로 집필했다.
 
 - 배포 주소: https://trmoo.github.io/22hs-programming/
-- 개발 규칙과 설계 결정: [CLAUDE.md](CLAUDE.md) · [docs/PLAN.md](docs/PLAN.md)
+- 설계 결정: [docs/PLAN.md](docs/PLAN.md)
 
 ---
 
