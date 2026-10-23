@@ -14,11 +14,18 @@
  *   7. 화면에 실은 예제 코드가 MDX 원문과 글자 단위로 같은가
  *      — check:examples 는 MDX 원문을 실행한다. 화면 쪽이 조금이라도 다르면
  *        「실행해 확인한 코드」를 실은 것이 아니다 (CLAUDE.md 6장 10번)
+ *   8. 태그가 글자로 보이지 않는가 — 본문에 &lt;code&gt; 나 &amp;lt; 가 있으면
+ *      학생 화면에 <code> · &lt; 가 그대로 찍힌다. 문항 글 변환기(inline-html.ts)도 여기서 시험한다
+ *   9. hidden 이 실제로 숨기는가 — [hidden]{display:none!important} 가 페이지 CSS 에 있고,
+ *      [고치기] 편집 칸이 hidden 을 달고 나오는가. 둘 중 하나가 빠지면 예제 아래에
+ *      같은 코드가 흰 입력창으로 한 번 더 보인다 (2026-10-23 배포본에서 겪음)
  *
  * 브라우저를 띄우지 않고 검사하므로 CI·학교 PC에서도 돌아간다.
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, posix } from 'node:path';
+/* Node 22.6+ 의 타입 스트리핑으로 .ts 를 직접 읽는다 (test-toc.mjs 와 같다) */
+import { 인라인HTML } from '../src/lib/inline-html.ts';
 
 const DIST = process.argv[2] ?? 'dist';
 
@@ -64,6 +71,8 @@ const files = 모든HTML(DIST).sort();
 /* ---------- 태그 파싱 (정규식 — 산출물이 우리가 만든 것이라 충분하다) ---------- */
 const 오류 = [];
 const 경고 = [];
+/** 페이지마다 같은 CSS 파일을 다시 읽지 않게 (9번 검사) */
+const CSS캐시 = new Map();
 
 /** <style>/<script> 안의 내용을 지운 사본 — CSS·JS 문자열이 오검출되지 않게 */
 function 마크업만(html) {
@@ -138,7 +147,108 @@ for (const file of files) {
 
   /* 7. 화면 코드 ↔ MDX 원문 */
   예제코드대조(rel, html);
+
+  /* 8. 태그가 글자로 보이지 않는가 */
+  글자로보이는태그(rel, html);
+
+  /* 9. hidden 이 실제로 숨기는가 */
+  숨김확인(rel, raw, html);
 }
+
+/* ---------- 8. 태그가 글자로 보이지 않는가 ---------- */
+/**
+ * 확인 문제의 문항 글을 {stem} 으로 넣었더니 MDX 에 적은 <code> 가 이스케이프되어
+ * 「&lt;code&gt;0 &lt; 점수&lt;/code&gt;」 처럼 글자로 보였다(19개 차시 89곳, 2026-10-23).
+ * 코드 상자·입력 칸·<code> 안은 태그 이야기를 일부러 적을 수 있으니 걷어 내고 본다.
+ */
+function 글자로보이는태그(rel, html) {
+  const 상자뺌 = html
+    .replace(/<pre\b[\s\S]*?<\/pre>/g, '')
+    .replace(/<textarea\b[\s\S]*?<\/textarea>/g, '');
+  const 본문 = 상자뺌.replace(/<code\b[^>]*>[\s\S]*?<\/code>/g, '');
+
+  const 태그 = 본문.match(/&lt;\/?(code|strong|em|b|i|br|span|sub|sup|kbd)\b[^&<]*?&gt;/g) ?? [];
+  if (태그.length) {
+    오류.push(
+      `${rel}: 태그가 글자로 보인다 ${태그.length}곳 (예: ${태그[0]}) — ` +
+        '문항 글이면 QuizItem 이 inline-html.ts 를 거치는지 확인한다'
+    );
+  }
+
+  /* <code> 안까지 본다 — 보기를 choices={['<code>점수 &gt; 90</code>']} 처럼 JS 문자열로 적으면
+     참조가 안 풀린 채 들어오고, 그것을 한 번 더 이스케이프하면 <code> 안에 &gt; 가 글자로 보인다 */
+  const 두번 = 상자뺌.match(/&amp;(lt|gt|amp|quot|#\d+);/g) ?? [];
+  if (두번.length) {
+    오류.push(
+      `${rel}: 문자 참조가 두 번 이스케이프되어 글자로 보인다 ${두번.length}곳 (예: ${두번[0]})`
+    );
+  }
+}
+
+/* ---------- 9. hidden 이 실제로 숨기는가 ---------- */
+function 페이지CSS(raw) {
+  let css = [...raw.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join('\n');
+  for (const m of raw.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*href="([^"]+)"/g)) {
+    const 경로 = join(DIST, base떼기(m[1]));
+    if (!CSS캐시.has(경로)) CSS캐시.set(경로, existsSync(경로) ? readFileSync(경로, 'utf8') : '');
+    css += '\n' + CSS캐시.get(경로);
+  }
+  return css;
+}
+
+function 숨김확인(rel, raw, html) {
+  /* 브라우저 기본값 [hidden]{display:none} 은 컴포넌트가 display 를 정하면 진다 */
+  if (!/\[hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/.test(페이지CSS(raw))) {
+    오류.push(`${rel}: 페이지 CSS 에 [hidden]{display:none!important} 가 없다 — global.css 를 확인한다`);
+  }
+
+  /* [고치기] 편집 칸은 닫힌 채로 나와야 한다. 열려 나오면 같은 코드가 두 번 보인다 */
+  const 열린칸 = [...html.matchAll(/<textarea\b[^>]*data-code-edit[^>]*>/g)].filter(
+    (m) => !/\shidden(?=[\s>=])/.test(m[0])
+  );
+  if (열린칸.length) {
+    오류.push(`${rel}: [고치기] 편집 칸 ${열린칸.length}개가 hidden 없이 나온다`);
+  }
+}
+
+/* ---------- 8-1. 문항 글 변환기 시험 ---------- */
+/**
+ * 허용 태그만 살리고 나머지는 글자로 넣는지, 짝이 틀리면 멈추는지 본다.
+ * 빌드가 성공했다는 것만으로는 「스크립트가 통과하지 않는다」를 알 수 없어 따로 시험한다.
+ */
+function 변환기시험() {
+  const 사례 = [
+    ['<code>0 < 점수 < 100</code> 이면?', '<code>0 &lt; 점수 &lt; 100</code> 이면?'],
+    ['<code>scanf(「%lf」, &cm)</code>', '<code>scanf(「%lf」, &amp;cm)</code>'],
+    ['<code>a && b</code>', '<code>a &amp;&amp; b</code>'],
+    /* JS 문자열로 적은 보기 — 참조가 안 풀린 채 온다. 두 번 바꾸면 &gt; 가 글자로 보인다 */
+    ['<code>점수 &gt;= 90</code> &#39;a&#39; &#x41;', '<code>점수 &gt;= 90</code> &#39;a&#39; &#x41;'],
+    ['&lt;script&gt;', '&lt;script&gt;'],
+    ['쓰이지 <strong>않은</strong> 것은?', '쓰이지 <strong>않은</strong> 것은?'],
+    ['<script>alert(1)</script>', '&lt;script&gt;alert(1)&lt;/script&gt;'],
+    ['<img src=x onerror=alert(1)>', '&lt;img src=x onerror=alert(1)&gt;'],
+    ["<b>굵게</b> 'a'", '&lt;b&gt;굵게&lt;/b&gt; &#39;a&#39;'],
+    ['태그 없음', '태그 없음'],
+  ];
+  for (const [넣음, 기대] of 사례) {
+    const 실제 = 인라인HTML(넣음);
+    if (실제 !== 기대) {
+      오류.push(`inline-html.ts: ${JSON.stringify(넣음)}\n          기대 ${JSON.stringify(기대)}\n          실제 ${JSON.stringify(실제)}`);
+    }
+  }
+  /* 속성 달린 <code onclick> 는 태그로 보지 않으므로 뒤의 </code> 가 짝 없이 남아 멈춘다 */
+  const 깨진것들 = ['<code>열고 안 닫음', '안 열고</code>', '<code><strong>엇갈림</code></strong>', '<code onclick="x()">a</code>'];
+  for (const 깨진것 of 깨진것들) {
+    let 멈춤 = false;
+    try {
+      인라인HTML(깨진것);
+    } catch {
+      멈춤 = true;
+    }
+    if (!멈춤) 오류.push(`inline-html.ts: 짝이 틀린 ${JSON.stringify(깨진것)} 에서 멈추지 않았다`);
+  }
+}
+변환기시험();
 
 /* ---------- 7. 화면에 실은 예제 코드가 MDX 원문과 같은가 ---------- */
 /**

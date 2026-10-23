@@ -7,6 +7,8 @@
  *
  * 데이터의 출처는 항상 자체 출제다 (CLAUDE.md 3-2). 교과서 문항을 옮기지 않는다.
  */
+import { 인라인HTML } from '@lib/inline-html';
+
 interface Props {
   stem: string;
   choices: string[];
@@ -20,17 +22,24 @@ const { stem, choices, answer, explain, std } = Astro.props;
 if (answer < 0 || answer >= choices.length) {
   throw new Error(`QuizItem: answer(${answer})가 보기 범위를 벗어났다 — "${stem}"`);
 }
+
+/* 문항 글의 <code>·<strong>·<em> 만 태그로 살리고 나머지는 글자로 넣는다.
+   {stem} 으로 넣으면 <code> 가 글자 그대로 보이고, set:html 을 그대로 쓰면
+   아무 HTML 이나 통과한다 — 둘 다 아니게 src/lib/inline-html.ts 를 거친다. */
+const 문항글 = 인라인HTML(stem);
+const 보기글 = choices.map(인라인HTML);
+const 해설글 = 인라인HTML(explain);
 ---
 
 <div class="qitem" data-quiz-item>
   <p class="qitem__stem">
-    {stem}
+    <Fragment set:html={문항글} />
     {std && <span class="qitem__std">{std}</span>}
   </p>
 
   <ol class="qitem__choices">
     {
-      choices.map((c, i) => (
+      보기글.map((c, i) => (
         <li>
           <button
             type="button"
@@ -48,7 +57,7 @@ if (answer < 0 || answer >= choices.length) {
 
   <div class="qitem__feedback" data-feedback hidden>
     <strong class="qitem__verdict" data-verdict></strong>
-    <span set:html={explain} />
+    <span set:html={해설글} />
   </div>
 </div>
 

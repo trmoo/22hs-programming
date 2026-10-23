@@ -16,6 +16,15 @@
   box-sizing: border-box;
 }
 
+/* hidden 속성은 언제나 숨긴다.
+   브라우저 기본값 [hidden]{display:none} 은 우리 스타일보다 약해서, 컴포넌트가
+   display 를 정해 두면 hidden 을 달아도 보인다. 그래서 예제 아래에 닫혀 있어야 할
+   [고치기] 편집 칸이 늘 열려 같은 코드가 두 번 보였다(2026-10-23).
+   check:html 이 이 규칙이 산출물 CSS 에 있는지 확인한다. */
+[hidden] {
+  display: none !important;
+}
+
 html {
   scroll-behavior: smooth;
   /* sticky 헤더 높이만큼 앵커 이동 위치를 내린다 */
